@@ -76,4 +76,6 @@ digitalio_digitalinout_obj_t *assert_digitalinout(mp_obj_t obj);
 volatile uint32_t *common_hal_digitalio_digitalinout_get_reg(digitalio_digitalinout_obj_t *self, digitalinout_reg_op_t op, uint32_t *mask);
 bool common_hal_digitalio_has_reg_op(digitalinout_reg_op_t op);
 
+void common_hal_digitalio_digitalinout_set_irq(digitalio_digitalinout_obj_t *self, digitalio_edge_t edge, 
+    digitalio_pull_t pull, io_irq_t *cb, void *arg);
 #endif // MICROPY_INCLUDED_SHARED_BINDINGS_DIGITALIO_DIGITALINOUT_H
