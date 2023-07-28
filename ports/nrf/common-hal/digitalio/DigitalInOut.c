@@ -29,6 +29,18 @@
 #include "supervisor/shared/translate/translate.h"
 
 #include "nrf_gpio.h"
+#include "nrfx_gpiote.h"
+
+// obj array to map pin number -> self since nrfx hide the mapping
+static digitalio_digitalinout_obj_t *_io_irq_objs[NUMBER_OF_PINS];
+
+static void _intr_handler(nrfx_gpiote_pin_t pin, nrf_gpiote_polarity_t action) {
+    digitalio_digitalinout_obj_t *self = _io_irq_objs[pin];
+    if (!self) {
+        return;
+    }
+    self->cb(self->cb_arg);
+}
 
 void common_hal_digitalio_digitalinout_never_reset(
     digitalio_digitalinout_obj_t *self) {
@@ -159,4 +171,58 @@ digitalio_pull_t common_hal_digitalio_digitalinout_get_pull(
         default:
             return PULL_NONE;
     }
+}
+
+void common_hal_digitalio_digitalinout_set_irq(digitalio_digitalinout_obj_t *self, digitalio_edge_t edge, 
+    digitalio_pull_t pull, io_irq_t *cb, void *arg) {
+    nrf_gpiote_polarity_t polarity = NRF_GPIOTE_POLARITY_TOGGLE;
+    nrf_gpio_pin_pull_t hal_pull = NRF_GPIO_PIN_NOPULL;
+    uint32_t pin = self->pin->number;
+
+    if(cb != NULL){
+        self->cb = cb;
+        self->cb_arg = arg;
+    }
+
+    _io_irq_objs[pin] = self;
+
+    switch (edge) {
+        case EDGE_RISE:
+            polarity = NRF_GPIOTE_POLARITY_LOTOHI;
+            break;
+        case EDGE_FALL:
+            polarity = NRF_GPIOTE_POLARITY_HITOLO;
+            break;
+        case EDGE_RISE_AND_FALL:
+        default:
+            break;
+    }
+
+    switch (pull) {
+        case PULL_UP:
+            hal_pull = NRF_GPIO_PIN_PULLUP;
+            break;
+        case PULL_DOWN:
+            hal_pull = NRF_GPIO_PIN_PULLDOWN;
+            break;
+        case PULL_NONE:
+        default:
+            break;
+    }
+
+    nrfx_gpiote_in_config_t cfg = {
+        .sense = polarity,
+        .pull = hal_pull,
+        .is_watcher = false,
+        .hi_accuracy = true,
+        .skip_gpio_setup = false,
+    };
+
+    nrfx_err_t err = nrfx_gpiote_in_init(pin, &cfg, _intr_handler);
+    if (err != NRFX_SUCCESS) {
+        mp_raise_RuntimeError(translate("All channels in use"));
+    }
+
+    nrfx_gpiote_in_event_enable(pin, true);
+    claim_pin(self->pin);
 }
