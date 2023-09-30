@@ -32,21 +32,29 @@ STATIC const mp_rom_map_elem_t board_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_BNO_RST), MP_ROM_PTR(&pin_P0_11) },
     { MP_ROM_QSTR(MP_QSTR_BNO_PS0), MP_ROM_PTR(&pin_P1_05) },
 
-    { MP_ROM_QSTR(MP_QSTR_SCL_INT), MP_ROM_PTR(&pin_P0_04) },
-    { MP_ROM_QSTR(MP_QSTR_SDA_INT), MP_ROM_PTR(&pin_P0_05) },
-
     { MP_ROM_QSTR(MP_QSTR_VOLTAGE_MONITOR), MP_ROM_PTR(&pin_P0_31) },
     { MP_ROM_QSTR(MP_QSTR_CHARGE_STAT), MP_ROM_PTR(&pin_P1_06) },
     { MP_ROM_QSTR(MP_QSTR_SWITCH_STAT), MP_ROM_PTR(&pin_P1_07) },
-    
+
     { MP_ROM_QSTR(MP_QSTR_SCK), MP_ROM_PTR(&pin_P0_13) },
     { MP_ROM_QSTR(MP_QSTR_MOSI), MP_ROM_PTR(&pin_P0_15) },
     { MP_ROM_QSTR(MP_QSTR_MISO), MP_ROM_PTR(&pin_P0_17) },
+
+    { MP_ROM_QSTR(MP_QSTR_SCK2), MP_ROM_PTR(&pin_P1_09) },
+    { MP_ROM_QSTR(MP_QSTR_MOSI2), MP_ROM_PTR(&pin_P0_08) },
+    { MP_ROM_QSTR(MP_QSTR_MISO2), MP_ROM_PTR(&pin_P1_08) },
     
     { MP_ROM_QSTR(MP_QSTR_SCL), MP_ROM_PTR(&pin_P0_00) },
     { MP_ROM_QSTR(MP_QSTR_SDA), MP_ROM_PTR(&pin_P0_01) },
 
+    { MP_ROM_QSTR(MP_QSTR_SCL2), MP_ROM_PTR(&pin_P0_04) },
+    { MP_ROM_QSTR(MP_QSTR_SDA2), MP_ROM_PTR(&pin_P0_05) },
+
+    { MP_ROM_QSTR(MP_QSTR_TX), MP_ROM_PTR(&pin_P1_12) },
+    { MP_ROM_QSTR(MP_QSTR_RX), MP_ROM_PTR(&pin_P1_11) },
+
     { MP_ROM_QSTR(MP_QSTR_I2C), MP_ROM_PTR(&board_i2c_obj) },
+    { MP_ROM_QSTR(MP_QSTR_UART), MP_ROM_PTR(&board_uart_obj) },
     { MP_ROM_QSTR(MP_QSTR_SPI), MP_ROM_PTR(&board_spi_obj) },
     { MP_ROM_QSTR(MP_QSTR_STEMMA_I2C), MP_ROM_PTR(&board_i2c_obj) },
 };
