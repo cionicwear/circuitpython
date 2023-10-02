@@ -27,4 +27,4 @@
 
 #pragma once
 
-extern const mp_obj_type_t ads129x_ADS129x_type;
+extern const mp_obj_type_t ads1x9x_ADS1x9x_type;

@@ -42,15 +42,21 @@ typedef struct {
     digitalio_digitalinout_obj_t pwdn;
     uint32_t sample_cnt;
     uint32_t sample_nb;
+    uint32_t sample_bytes;
     bool started;
+    bool proc;
+    uint8_t id;
     uint8_t num_chan;
     uint8_t buf_idx;
     uint8_t *buf[2];
-} ads129x_ADS129x_obj_t;
+} ads1x9x_ADS1x9x_obj_t;
 
 #define ADS129X_DEV_ID          0x92
+#define ADS1198_DEV_ID          0xB6
 #define ADS129X_SIZE_DATA_CHAN  3
-#define ADS129X_SIZE_STATUS_REG 3
+#define ADS1198_SIZE_DATA_CHAN  2
+#define ADS1X9X_SIZE_STATUS_REG 3
+#define ADS1X9X_NUM_CHAN        8
 
 // System Commands
 #define CMD_WAKEUP              0x02
@@ -96,14 +102,14 @@ typedef struct {
 #define ADS_WCT1_REG            0x18
 #define ADS_wct2_REG            0x19
 
-void common_hal_ads129x_ADS129x_construct(ads129x_ADS129x_obj_t *self, busio_spi_obj_t *bus, const mcu_pin_obj_t *cs, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *drdy, const mcu_pin_obj_t *start, const mcu_pin_obj_t *pwdn);
-void common_hal_ads129x_ADS129x_reset(ads129x_ADS129x_obj_t *self);
-void common_hal_ads129x_ADS129x_deinit(ads129x_ADS129x_obj_t *self);
-void common_hal_ads129x_ADS129x_start(ads129x_ADS129x_obj_t *self, uint32_t sample_nb);
-void common_hal_ads129x_ADS129x_stop(ads129x_ADS129x_obj_t *self);
-uint8_t common_hal_ads129x_ADS129x_read_reg(ads129x_ADS129x_obj_t *self, uint8_t addr);
-void common_hal_ads129x_ADS129x_write_reg(ads129x_ADS129x_obj_t *self, uint8_t addr, uint8_t value);
-void common_hal_ads129x_ADS129x_read_data(ads129x_ADS129x_obj_t *self, uint8_t *data, uint16_t len);
-size_t common_hal_ads129x_ADS129x_read(ads129x_ADS129x_obj_t *self, mp_buffer_info_t *buf);
+void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi_obj_t *bus, const mcu_pin_obj_t *cs, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *drdy, const mcu_pin_obj_t *start, const mcu_pin_obj_t *pwdn);
+void common_hal_ads1x9x_ADS1x9x_reset(ads1x9x_ADS1x9x_obj_t *self);
+void common_hal_ads1x9x_ADS1x9x_deinit(ads1x9x_ADS1x9x_obj_t *self);
+void common_hal_ads1x9x_ADS1x9x_start(ads1x9x_ADS1x9x_obj_t *self, uint32_t sample_nb);
+void common_hal_ads1x9x_ADS1x9x_stop(ads1x9x_ADS1x9x_obj_t *self);
+uint8_t common_hal_ads1x9x_ADS1x9x_read_reg(ads1x9x_ADS1x9x_obj_t *self, uint8_t addr);
+void common_hal_ads1x9x_ADS1x9x_write_reg(ads1x9x_ADS1x9x_obj_t *self, uint8_t addr, uint8_t value);
+void common_hal_ads1x9x_ADS1x9x_read_data(ads1x9x_ADS1x9x_obj_t *self, uint8_t *data, uint16_t len);
+size_t common_hal_ads1x9x_ADS1x9x_read(ads1x9x_ADS1x9x_obj_t *self, mp_buffer_info_t *buf);
 
 #endif // MICROPY_INCLUDED_SHARED_MODULE_ADS129X_ADS129X_H

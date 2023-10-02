@@ -30,20 +30,20 @@
 #include "py/obj.h"
 #include "py/runtime.h"
 
-#include "shared-bindings/ads129x/ADS129x.h"
+#include "shared-bindings/ads1x9x/ADS1x9x.h"
 
-//| """Interface to an ADS129x via the SPI bus"""
+//| """Interface to an ADS1x9x via the SPI bus"""
 
-STATIC const mp_rom_map_elem_t ads129x_module_globals_table[] = {
-    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_ads129x) },
-    { MP_ROM_QSTR(MP_QSTR_ADS129x), MP_ROM_PTR(&ads129x_ADS129x_type) },
+STATIC const mp_rom_map_elem_t ads1x9x_module_globals_table[] = {
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_ads1x9x) },
+    { MP_ROM_QSTR(MP_QSTR_ADS1x9x), MP_ROM_PTR(&ads1x9x_ADS1x9x_type) },
 };
 
-STATIC MP_DEFINE_CONST_DICT(ads129x_module_globals, ads129x_module_globals_table);
+STATIC MP_DEFINE_CONST_DICT(ads1x9x_module_globals, ads1x9x_module_globals_table);
 
-const mp_obj_module_t ads129x_module = {
+const mp_obj_module_t ads1x9x_module = {
     .base = { &mp_type_module },
-    .globals = (mp_obj_dict_t *)&ads129x_module_globals,
+    .globals = (mp_obj_dict_t *)&ads1x9x_module_globals,
 };
 
-MP_REGISTER_MODULE(MP_QSTR_ads129x, ads129x_module, CIRCUITPY_ADS129x);
+MP_REGISTER_MODULE(MP_QSTR_ads1x9x, ads1x9x_module, CIRCUITPY_ADS1x9x);
