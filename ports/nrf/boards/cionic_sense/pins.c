@@ -49,6 +49,15 @@ STATIC const mp_rom_map_elem_t board_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_I2C), MP_ROM_PTR(&board_i2c_obj) },
     { MP_ROM_QSTR(MP_QSTR_SPI), MP_ROM_PTR(&board_spi_obj) },
     { MP_ROM_QSTR(MP_QSTR_STEMMA_I2C), MP_ROM_PTR(&board_i2c_obj) },
+
+    { MP_ROM_QSTR(MP_QSTR_ADS_CSN), MP_ROM_PTR(&pin_P0_26) },
+    { MP_ROM_QSTR(MP_QSTR_ADS_CLK), MP_ROM_PTR(&pin_P0_27) },
+    { MP_ROM_QSTR(MP_QSTR_ADS_MOSI), MP_ROM_PTR(&pin_P0_07) },
+    { MP_ROM_QSTR(MP_QSTR_ADS_MISO), MP_ROM_PTR(&pin_P0_06) },
+    { MP_ROM_QSTR(MP_QSTR_ADS_PWDN), MP_ROM_PTR(&pin_P0_10) },
+    { MP_ROM_QSTR(MP_QSTR_ADS_RSTN), MP_ROM_PTR(&pin_P0_09) },
+    { MP_ROM_QSTR(MP_QSTR_ADS_DRDY), MP_ROM_PTR(&pin_P0_25) },
+    { MP_ROM_QSTR(MP_QSTR_ADS_START), MP_ROM_PTR(&pin_P1_11) },
 };
 
 MP_DEFINE_CONST_DICT(board_module_globals, board_module_globals_table);
