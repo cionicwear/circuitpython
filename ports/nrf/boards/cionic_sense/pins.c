@@ -50,8 +50,8 @@ STATIC const mp_rom_map_elem_t board_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_SCL2), MP_ROM_PTR(&pin_P0_04) },
     { MP_ROM_QSTR(MP_QSTR_SDA2), MP_ROM_PTR(&pin_P0_05) },
 
-    { MP_ROM_QSTR(MP_QSTR_TX), MP_ROM_PTR(&pin_P1_12) },
-    { MP_ROM_QSTR(MP_QSTR_RX), MP_ROM_PTR(&pin_P1_11) },
+    { MP_ROM_QSTR(MP_QSTR_TX), MP_ROM_PTR(&pin_P0_16) },
+    { MP_ROM_QSTR(MP_QSTR_RX), MP_ROM_PTR(&pin_P0_24) },
 
     { MP_ROM_QSTR(MP_QSTR_I2C), MP_ROM_PTR(&board_i2c_obj) },
     { MP_ROM_QSTR(MP_QSTR_UART), MP_ROM_PTR(&board_uart_obj) },
