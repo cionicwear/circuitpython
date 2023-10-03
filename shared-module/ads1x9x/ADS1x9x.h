@@ -32,23 +32,21 @@
 #include "common-hal/busio/SPI.h"
 #include "common-hal/digitalio/DigitalInOut.h"
 
+#include "py/ringbuf.h"
+
 typedef struct {
     mp_obj_base_t base;
     busio_spi_obj_t *bus;
+    ringbuf_t rb;
     digitalio_digitalinout_obj_t cs;
     digitalio_digitalinout_obj_t rst;
     digitalio_digitalinout_obj_t start;
     digitalio_digitalinout_obj_t drdy;
     digitalio_digitalinout_obj_t pwdn;
-    uint32_t sample_cnt;
-    uint32_t sample_nb;
     uint32_t sample_bytes;
     bool started;
-    bool proc;
     uint8_t id;
     uint8_t num_chan;
-    uint8_t buf_idx;
-    uint8_t *buf[2];
 } ads1x9x_ADS1x9x_obj_t;
 
 #define ADS129X_DEV_ID          0x92
@@ -103,13 +101,14 @@ typedef struct {
 #define ADS_wct2_REG            0x19
 
 void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi_obj_t *bus, const mcu_pin_obj_t *cs, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *drdy, const mcu_pin_obj_t *start, const mcu_pin_obj_t *pwdn);
+uint16_t common_hal_ads1x9x_ADS1x9x_sample_size_get(ads1x9x_ADS1x9x_obj_t *self);
 void common_hal_ads1x9x_ADS1x9x_reset(ads1x9x_ADS1x9x_obj_t *self);
 void common_hal_ads1x9x_ADS1x9x_deinit(ads1x9x_ADS1x9x_obj_t *self);
-void common_hal_ads1x9x_ADS1x9x_start(ads1x9x_ADS1x9x_obj_t *self, uint32_t sample_nb);
+void common_hal_ads1x9x_ADS1x9x_start(ads1x9x_ADS1x9x_obj_t *self);
 void common_hal_ads1x9x_ADS1x9x_stop(ads1x9x_ADS1x9x_obj_t *self);
 uint8_t common_hal_ads1x9x_ADS1x9x_read_reg(ads1x9x_ADS1x9x_obj_t *self, uint8_t addr);
 void common_hal_ads1x9x_ADS1x9x_write_reg(ads1x9x_ADS1x9x_obj_t *self, uint8_t addr, uint8_t value);
 void common_hal_ads1x9x_ADS1x9x_read_data(ads1x9x_ADS1x9x_obj_t *self, uint8_t *data, uint16_t len);
-size_t common_hal_ads1x9x_ADS1x9x_read(ads1x9x_ADS1x9x_obj_t *self, mp_buffer_info_t *buf);
+size_t common_hal_ads1x9x_ADS1x9x_read(ads1x9x_ADS1x9x_obj_t *self, mp_buffer_info_t *buf, uint16_t buf_size);
 
 #endif // MICROPY_INCLUDED_SHARED_MODULE_ADS129X_ADS129X_H

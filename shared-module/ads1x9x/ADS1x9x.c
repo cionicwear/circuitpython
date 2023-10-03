@@ -37,9 +37,10 @@
 #include "py/stream.h"
 
 #define ADS1x9x_BAUDRATE    (8000000)
-#define MAX_BUF_LEN         (64)
+#define MAX_BUF_LEN         (32)
+#define TIMESTAMP_LEN       (4)
 
-STATIC bool buffer_ready = false;
+// STATIC bool buffer_ready = false;
 
 STATIC void lock_bus(ads1x9x_ADS1x9x_obj_t *self) {
     if (!common_hal_busio_spi_try_lock(self->bus)) {
@@ -52,44 +53,31 @@ STATIC void unlock_bus(ads1x9x_ADS1x9x_obj_t *self) {
     common_hal_busio_spi_unlock(self->bus);
 }
 
-STATIC uint8_t sample_size(ads1x9x_ADS1x9x_obj_t *self) {
-    return self->num_chan * self->sample_bytes + ADS1X9X_SIZE_STATUS_REG;
-}
-
 STATIC void data_ready_cb(void *arg) {
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)arg;
-    uint16_t data_len = sample_size(self);
+    uint16_t data_len = common_hal_ads1x9x_ADS1x9x_sample_size_get(self);
+    uint8_t rx_buf[MAX_BUF_LEN] = {0};
+    uint32_t ts_hundos = common_hal_time_monotonic_ns() / 100000;
 
-    if(self->started == false || self->proc){
+    if(self->started == false){
         return;
     }
 
-    if(self->sample_cnt == self->sample_nb)
-    {
-        if(self->buf_idx == 0){
-            self->buf_idx = 1;
-        }else{
-            self->buf_idx = 0;
-        }
-    }
+    rx_buf[0] = ts_hundos & 0xff;
+    rx_buf[1] = (ts_hundos >> 8) & 0xff;
+    rx_buf[2] = (ts_hundos >> 16) & 0xff;
+    rx_buf[3] = (ts_hundos >> 24) & 0xff;
 
-    common_hal_ads1x9x_ADS1x9x_read_data(self, self->buf[self->buf_idx] + ((data_len - ADS1X9X_SIZE_STATUS_REG) * self->sample_cnt), data_len);
-    self->sample_cnt++;
-
-    if(self->sample_cnt == self->sample_nb){
-        buffer_ready = true;
-    }
+    common_hal_ads1x9x_ADS1x9x_read_data(self, rx_buf+4, data_len);
+    ringbuf_put_n(&self->rb, rx_buf, data_len - ADS1X9X_SIZE_STATUS_REG + TIMESTAMP_LEN);
 }
 
 void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi_obj_t *bus, const mcu_pin_obj_t *cs, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *drdy, const mcu_pin_obj_t *start, const mcu_pin_obj_t *pwdn) {    
     self->bus = bus;
     self->started = false;
-    self->buf_idx = 0;
-    self->sample_cnt = 0;
     self->num_chan = ADS1X9X_NUM_CHAN;
-    self->sample_nb = 0;
     self->sample_bytes = 0;
-    self->proc = false;
+
     common_hal_digitalio_digitalinout_construct(&self->cs, cs);
     common_hal_digitalio_digitalinout_switch_to_output(&self->cs, true, DRIVE_MODE_PUSH_PULL);
     common_hal_digitalio_digitalinout_construct(&self->rst, rst);
@@ -117,8 +105,15 @@ void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi
         mp_raise_OSError(ENODEV);
         return;
     }
-    
     mp_printf(&mp_plat_print, "%s found\n", self->id == ADS129X_DEV_ID ? "ADS129X" : "ADS1198");
+
+    if(!ringbuf_alloc(&self->rb, ((self->num_chan * self->sample_bytes + TIMESTAMP_LEN) * 300), true)){
+        mp_raise_OSError(ENOMEM);
+    }
+}
+
+uint16_t common_hal_ads1x9x_ADS1x9x_sample_size_get(ads1x9x_ADS1x9x_obj_t *self) {
+    return (uint16_t)(self->num_chan * self->sample_bytes + ADS1X9X_SIZE_STATUS_REG);
 }
 
 void common_hal_ads1x9x_ADS1x9x_reset(ads1x9x_ADS1x9x_obj_t *self) {
@@ -145,30 +140,17 @@ void common_hal_ads1x9x_ADS1x9x_deinit(ads1x9x_ADS1x9x_obj_t *self) {
     return;
 }
 
-void common_hal_ads1x9x_ADS1x9x_start(ads1x9x_ADS1x9x_obj_t *self, uint32_t sample_nb) {
-    uint8_t wval = 0;
+void common_hal_ads1x9x_ADS1x9x_start(ads1x9x_ADS1x9x_obj_t *self) {
+    uint8_t wval = CMD_RDATAC;
     if(self->started){
         mp_raise_OSError(EAGAIN);
         return;
     }
     self->started = true;
-    self->sample_nb = sample_nb;
-    self->buf[0] = m_malloc(sample_nb * sample_size(self), false);
-    if(self->buf[0] == NULL){
-        mp_raise_OSError(ENOMEM);
-        return;
-    }
-    self->buf[1] = m_malloc(sample_nb * sample_size(self), false);
-    if(self->buf[1] == NULL){
-        m_free(self->buf[0]);
-        mp_raise_OSError(ENOMEM);
-        return;
-    }
-    self->buf_idx = 0;
-    self->sample_cnt = 0;
+
+    ringbuf_clear(&self->rb);
     lock_bus(self);
     common_hal_digitalio_digitalinout_set_value(&self->cs, false);
-    wval = CMD_RDATAC;
     common_hal_busio_spi_write(self->bus, &wval, 1);
     common_hal_digitalio_digitalinout_set_value(&self->cs, true);
     unlock_bus(self);
@@ -214,38 +196,20 @@ void common_hal_ads1x9x_ADS1x9x_write_reg(ads1x9x_ADS1x9x_obj_t *self, uint8_t a
 
 void common_hal_ads1x9x_ADS1x9x_read_data(ads1x9x_ADS1x9x_obj_t *self, uint8_t *data, uint16_t len) {
     uint8_t tx_buf[MAX_BUF_LEN] = {0};
-    uint8_t rx_buf[MAX_BUF_LEN] = {0};
+    tx_buf[0] = CMD_RDATA;
 
     lock_bus(self);
     common_hal_digitalio_digitalinout_set_value(&self->cs, false);
-    tx_buf[0] = CMD_RDATA;
-    // common_hal_busio_spi_write(self->bus, &wval, 1);
-    // common_hal_busio_spi_read(self->bus, data, len, 0);
-    common_hal_busio_spi_transfer(self->bus, tx_buf, rx_buf, len + 1);
+    common_hal_busio_spi_transfer(self->bus, tx_buf, data, len + 1);
     common_hal_digitalio_digitalinout_set_value(&self->cs, true);
-    memcpy(data, &rx_buf[ADS1X9X_SIZE_STATUS_REG + 1], len - ADS1X9X_SIZE_STATUS_REG);
+    memcpy(data, &data[ADS1X9X_SIZE_STATUS_REG + 1], len - ADS1X9X_SIZE_STATUS_REG);
     unlock_bus(self);
 }
 
-size_t common_hal_ads1x9x_ADS1x9x_read(ads1x9x_ADS1x9x_obj_t *self, mp_buffer_info_t *buf) {
-    uint8_t idx = self->buf_idx;
+size_t common_hal_ads1x9x_ADS1x9x_read(ads1x9x_ADS1x9x_obj_t *self, mp_buffer_info_t *buf, uint16_t buf_size) {
     uint8_t *ptr = buf->buf;
-    uint16_t nb = 0;
+    size_t rlen = 0;
 
-    while (buffer_ready == false) {
-        mp_handle_pending(true);
-        // Allow user to break out of a timeout with a KeyboardInterrupt.
-        if (mp_hal_is_interrupted()) {
-            return 0;
-        }
-    }
-    self->proc = true;
-    nb = self->sample_cnt;
-    self->sample_cnt = 0;
-
-    buffer_ready = false;
-    // mp_printf(&mp_plat_print, "ads1x9x cpy %d samples from buf[%d]\n", nb, idx);
-    memcpy(ptr, self->buf[idx], nb * (sample_size(self) - ADS1X9X_SIZE_STATUS_REG));
-    self->proc = false;
-    return nb * (sample_size(self) - ADS1X9X_SIZE_STATUS_REG);
+    rlen = ringbuf_get_n(&self->rb, ptr, buf_size);
+    return rlen;
 }
