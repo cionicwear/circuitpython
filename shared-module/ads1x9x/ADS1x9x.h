@@ -29,10 +29,25 @@
 
 #include "py/obj.h"
 
+#include "lib/cionic/diff_filter.h"
+
 #include "common-hal/busio/SPI.h"
 #include "common-hal/digitalio/DigitalInOut.h"
 
 #include "py/ringbuf.h"
+
+
+#define ADS129X_DEV_ID          0x92
+#define ADS1198_DEV_ID          0xB6
+#define ADS129X_SIZE_DATA_CHAN  3
+#define ADS1198_SIZE_DATA_CHAN  2
+#define ADS1X9X_SIZE_STATUS_REG 3
+#define ADS1X9X_NUM_CHAN        8
+
+typedef enum {
+    ADS1x9x_RAW,
+    ADS1x9x_DIFF_FILTER,
+} ads1x9x_filter_type_e;
 
 typedef struct {
     mp_obj_base_t base;
@@ -43,18 +58,17 @@ typedef struct {
     digitalio_digitalinout_obj_t start;
     digitalio_digitalinout_obj_t drdy;
     digitalio_digitalinout_obj_t pwdn;
+    diff_filter_t diff_filter;
     uint32_t sample_bytes;
     bool started;
     uint8_t id;
     uint8_t num_chan;
+    uint8_t filter;
+    float *norms;
+    float *loff;
+    float all_norms[ADS1X9X_NUM_CHAN]; // all channel norms
+    uint8_t chan[ADS1X9X_NUM_CHAN];
 } ads1x9x_ADS1x9x_obj_t;
-
-#define ADS129X_DEV_ID          0x92
-#define ADS1198_DEV_ID          0xB6
-#define ADS129X_SIZE_DATA_CHAN  3
-#define ADS1198_SIZE_DATA_CHAN  2
-#define ADS1X9X_SIZE_STATUS_REG 3
-#define ADS1X9X_NUM_CHAN        8
 
 // System Commands
 #define CMD_WAKEUP              0x02
