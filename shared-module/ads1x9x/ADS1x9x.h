@@ -61,6 +61,7 @@ typedef struct {
     diff_filter_t diff_filter;
     uint32_t sample_bytes;
     bool started;
+    bool lock;
     uint8_t id;
     uint8_t num_chan;
     uint8_t filter;

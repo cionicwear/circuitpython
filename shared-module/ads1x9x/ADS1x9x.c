@@ -124,6 +124,7 @@ STATIC void data_ready_cb(void *arg) {
     uint8_t rx_buf[MAX_BUF_LEN] = {0};
     uint32_t ts_hundos = common_hal_time_monotonic_ns() / 100000;
     // float f = 0.0;
+    self->lock = true;
 
     if(self->started == false){
         return;
@@ -137,6 +138,8 @@ STATIC void data_ready_cb(void *arg) {
     common_hal_ads1x9x_ADS1x9x_read_data(self, rx_buf+4, (self->num_chan * self->sample_bytes) + ADS1X9X_SIZE_STATUS_REG);
 
     ringbuf_put_n(&self->rb, rx_buf, (self->num_chan * sizeof(float)) + TIMESTAMP_LEN);
+
+    self->lock = false;
 }
 
 STATIC void ads1x9x_set_norms(ads1x9x_ADS1x9x_obj_t *self)
@@ -304,6 +307,14 @@ void common_hal_ads1x9x_ADS1x9x_read_data(ads1x9x_ADS1x9x_obj_t *self, uint8_t *
 size_t common_hal_ads1x9x_ADS1x9x_read(ads1x9x_ADS1x9x_obj_t *self, mp_buffer_info_t *buf, uint16_t buf_size) {
     uint8_t *ptr = buf->buf;
     size_t rlen = 0;
+
+    while(self->lock){
+        mp_handle_pending(true);
+        // Allow user to break out of a timeout with a KeyboardInterrupt.
+        if (mp_hal_is_interrupted()) {
+            return 0;
+        }
+    }
 
     rlen = ringbuf_get_n(&self->rb, ptr, buf_size);
     return rlen;
