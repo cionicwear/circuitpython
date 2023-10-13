@@ -54,10 +54,10 @@ diff_filter_process(diff_filter_t *diff, float *norms, int numchans,
         for (int j = DIFF_FILTER_ORDER; j > 0; j--) {
             diff->input[i][j] = diff->input[i][j-1];
         }
-        int24_t tf = READ_BE(int24_t, buffer);
-        float uv = (float)tf.value * norms[i];
+        int16_t tf = READ_BE(int16_t, buffer);
+        float uv = (float)tf * norms[i];
         diff->input[i][0] = uv;
-        buffer += 3;
+        buffer += 2;
         // calculate N-order diff
         float output = diff_filter_run(diff->input[i], DIFF_FILTER_ORDER);
         // append to rms_buffer

@@ -30,12 +30,10 @@
 #include "py/obj.h"
 
 #include "lib/cionic/diff_filter.h"
+#include "lib/cionic/emg_iir.h"
 
 #include "common-hal/busio/SPI.h"
 #include "common-hal/digitalio/DigitalInOut.h"
-
-#include "py/ringbuf.h"
-
 
 #define ADS129X_DEV_ID          0x92
 #define ADS1198_DEV_ID          0xB6
@@ -47,18 +45,19 @@
 typedef enum {
     ADS1x9x_RAW,
     ADS1x9x_DIFF_FILTER,
+    ADS1x9x_IIR_FILTER,
 } ads1x9x_filter_type_e;
 
 typedef struct {
     mp_obj_base_t base;
     busio_spi_obj_t *bus;
-    ringbuf_t rb;
     digitalio_digitalinout_obj_t cs;
     digitalio_digitalinout_obj_t rst;
     digitalio_digitalinout_obj_t start;
     digitalio_digitalinout_obj_t drdy;
     digitalio_digitalinout_obj_t pwdn;
     diff_filter_t diff_filter;
+    iir_filter_t iir_filter;
     uint32_t sample_bytes;
     bool started;
     bool lock;

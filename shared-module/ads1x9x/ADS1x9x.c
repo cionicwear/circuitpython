@@ -40,8 +40,9 @@
 
 #define ADS1x9x_BAUDRATE    (8000000)
 // TS (4 Bytes) + (nb_chan * sizeof(float)) +  ADS1X9X_SIZE_STATUS_REG + spi_cmd (1 Byte)
-#define MAX_BUF_LEN         (4 + (ADS1X9X_NUM_CHAN * sizeof(float)) + ADS1X9X_SIZE_STATUS_REG + 1)
-#define TIMESTAMP_LEN       (4)
+#define MAX_BUF_LEN         (ADS1X9X_NUM_CHAN * sizeof(float)) + ADS1X9X_SIZE_STATUS_REG + 1
+
+float g_ads_buffer[ADS1X9X_NUM_CHAN] = {0};
 
 // ads129x datasheet 9.4.1.3.3
 // ads121x datasheet p.25 - Data Format
@@ -119,26 +120,26 @@ STATIC void ads129x_diff_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, floa
 
 }
 
+STATIC void ads129x_iir_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out, uint16_t len)
+{
+    int numchans = len / 2; // data in is 16-bit
+    uint32_t ts_out;
+
+    if (iir_filter_process(&self->iir_filter, self->norms, numchans, 0, in, &ts_out, out) != 0) {
+        return;
+    }
+
+}
+
 STATIC void data_ready_cb(void *arg) {
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)arg;
-    uint8_t rx_buf[MAX_BUF_LEN] = {0};
-    uint32_t ts_hundos = common_hal_time_monotonic_ns() / 100000;
-    // float f = 0.0;
     self->lock = true;
 
     if(self->started == false){
         return;
     }
 
-    rx_buf[0] = ts_hundos & 0xff;
-    rx_buf[1] = (ts_hundos >> 8) & 0xff;
-    rx_buf[2] = (ts_hundos >> 16) & 0xff;
-    rx_buf[3] = (ts_hundos >> 24) & 0xff;
-
-    common_hal_ads1x9x_ADS1x9x_read_data(self, rx_buf+4, (self->num_chan * self->sample_bytes) + ADS1X9X_SIZE_STATUS_REG);
-
-    ringbuf_put_n(&self->rb, rx_buf, (self->num_chan * sizeof(float)) + TIMESTAMP_LEN);
-
+    common_hal_ads1x9x_ADS1x9x_read_data(self, (uint8_t *)g_ads_buffer, (self->num_chan * self->sample_bytes) + ADS1X9X_SIZE_STATUS_REG);
     self->lock = false;
 }
 
@@ -158,7 +159,7 @@ void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi
     self->started = false;
     self->num_chan = ADS1X9X_NUM_CHAN;
     self->sample_bytes = 0;
-    self->filter = ADS1x9x_DIFF_FILTER;
+    self->filter = ADS1x9x_IIR_FILTER;
 
     common_hal_digitalio_digitalinout_construct(&self->cs, cs);
     common_hal_digitalio_digitalinout_switch_to_output(&self->cs, true, DRIVE_MODE_PUSH_PULL);
@@ -189,12 +190,9 @@ void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi
     }
     mp_printf(&mp_plat_print, "%s found\n", self->id == ADS129X_DEV_ID ? "ADS129X" : "ADS1198");
 
-    if(!ringbuf_alloc(&self->rb, ((self->num_chan * sizeof(float) + TIMESTAMP_LEN) * 300), true)){
-        mp_raise_OSError(ENOMEM);
-    }
-
     ads1x9x_set_norms(self);
     diff_filter_init(&self->diff_filter);
+    iir_filter_init(&self->iir_filter);
 }
 
 uint16_t common_hal_ads1x9x_ADS1x9x_sample_size_get(ads1x9x_ADS1x9x_obj_t *self) {
@@ -233,7 +231,6 @@ void common_hal_ads1x9x_ADS1x9x_start(ads1x9x_ADS1x9x_obj_t *self) {
     }
     self->started = true;
 
-    ringbuf_clear(&self->rb);
     lock_bus(self);
     common_hal_digitalio_digitalinout_set_value(&self->cs, false);
     common_hal_busio_spi_write(self->bus, &wval, 1);
@@ -298,6 +295,8 @@ void common_hal_ads1x9x_ADS1x9x_read_data(ads1x9x_ADS1x9x_obj_t *self, uint8_t *
         ads129x_raw(self, rx_buf, (float *)data);
     }else if(self->filter == ADS1x9x_DIFF_FILTER){
         ads129x_diff_filtered(self, rx_buf, (float *)data, len - ADS1X9X_SIZE_STATUS_REG);
+    }else if(self->filter == ADS1x9x_IIR_FILTER){
+        ads129x_iir_filtered(self, rx_buf, (float *)data, len - ADS1X9X_SIZE_STATUS_REG);
     }
     
     
@@ -306,7 +305,6 @@ void common_hal_ads1x9x_ADS1x9x_read_data(ads1x9x_ADS1x9x_obj_t *self, uint8_t *
 
 size_t common_hal_ads1x9x_ADS1x9x_read(ads1x9x_ADS1x9x_obj_t *self, mp_buffer_info_t *buf, uint16_t buf_size) {
     uint8_t *ptr = buf->buf;
-    size_t rlen = 0;
 
     while(self->lock){
         mp_handle_pending(true);
@@ -316,6 +314,6 @@ size_t common_hal_ads1x9x_ADS1x9x_read(ads1x9x_ADS1x9x_obj_t *self, mp_buffer_in
         }
     }
 
-    rlen = ringbuf_get_n(&self->rb, ptr, buf_size);
-    return rlen;
+    memcpy(ptr, g_ads_buffer, buf_size);
+    return buf_size;
 }
