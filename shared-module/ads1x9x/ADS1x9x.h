@@ -116,6 +116,7 @@ typedef struct {
 
 void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi_obj_t *bus, const mcu_pin_obj_t *cs, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *drdy, const mcu_pin_obj_t *start, const mcu_pin_obj_t *pwdn);
 uint16_t common_hal_ads1x9x_ADS1x9x_sample_size_get(ads1x9x_ADS1x9x_obj_t *self);
+void common_hal_ads1x9x_ADS1x9x_filter_set(ads1x9x_ADS1x9x_obj_t *self, uint8_t filt);
 void common_hal_ads1x9x_ADS1x9x_reset(ads1x9x_ADS1x9x_obj_t *self);
 void common_hal_ads1x9x_ADS1x9x_deinit(ads1x9x_ADS1x9x_obj_t *self);
 void common_hal_ads1x9x_ADS1x9x_start(ads1x9x_ADS1x9x_obj_t *self);

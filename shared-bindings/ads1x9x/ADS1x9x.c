@@ -116,6 +116,20 @@ STATIC mp_obj_t ads1x9x_ads1x9x_sample_size_get(mp_obj_t self_in) {
 }
 MP_DEFINE_CONST_FUN_OBJ_1(ads1x9x_ads1x9x_sample_size_get_obj, ads1x9x_ads1x9x_sample_size_get);
 
+//|     def filter_set(self, filter) -> None:
+//|         """Set filter type for ADS1x9x
+//|
+//|         :param int filter: The filter enum to write
+//|         :return: None"""
+
+STATIC mp_obj_t ads1x9x_ads1x9x_filter_set(mp_obj_t self_in, mp_obj_t filter) {
+    ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)self_in;
+    uint32_t filt = mp_obj_get_int(filter);
+    common_hal_ads1x9x_ADS1x9x_filter_set(self, (uint8_t)filt);
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_2(ads1x9x_ads1x9x_filter_set_obj, ads1x9x_ads1x9x_filter_set);
+
 //|     def read_reg(self, address) -> int:
 //|         """Read a ADS1x9x register
 //|
@@ -206,6 +220,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(ads1x9x_ads1x9x_deinit_obj, ads1x9x_ads1x9x_deinit);
 STATIC const mp_rom_map_elem_t ads1x9x_ads1x9x_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_reset), MP_ROM_PTR(&ads1x9x_ads1x9x_reset_obj) },
     { MP_ROM_QSTR(MP_QSTR_sample_size_get), MP_ROM_PTR(&ads1x9x_ads1x9x_sample_size_get_obj) },
+    { MP_ROM_QSTR(MP_QSTR_filter_set), MP_ROM_PTR(&ads1x9x_ads1x9x_filter_set_obj) },
     { MP_ROM_QSTR(MP_QSTR_read_reg), MP_ROM_PTR(&ads1x9x_ads1x9x_read_reg_obj) },
     { MP_ROM_QSTR(MP_QSTR_write_reg), MP_ROM_PTR(&ads1x9x_ads1x9x_write_reg_obj) },
     { MP_ROM_QSTR(MP_QSTR_start), MP_ROM_PTR(&ads1x9x_ads1x9x_start_obj) },

@@ -195,6 +195,13 @@ void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi
     iir_filter_init(&self->iir_filter);
 }
 
+void common_hal_ads1x9x_ADS1x9x_filter_set(ads1x9x_ADS1x9x_obj_t *self, uint8_t filt) {
+    self->filter = filt;
+    diff_filter_init(&self->diff_filter);
+    iir_filter_init(&self->iir_filter);
+    mp_printf(&mp_plat_print, "set filter to %d\n", self->filter);
+}
+
 uint16_t common_hal_ads1x9x_ADS1x9x_sample_size_get(ads1x9x_ADS1x9x_obj_t *self) {
     return (uint16_t)(self->num_chan * sizeof(float));
 }
