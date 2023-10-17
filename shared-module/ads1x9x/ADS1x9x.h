@@ -31,6 +31,7 @@
 
 #include "lib/cionic/diff_filter.h"
 #include "lib/cionic/emg_iir.h"
+#include "lib/cionic/ringbuf.h"
 
 #include "common-hal/busio/SPI.h"
 #include "common-hal/digitalio/DigitalInOut.h"
@@ -58,6 +59,7 @@ typedef struct {
     digitalio_digitalinout_obj_t pwdn;
     diff_filter_t diff_filter;
     iir_filter_t iir_filter;
+    ringbuf_t *rb;
     uint32_t sample_bytes;
     bool started;
     bool lock;
