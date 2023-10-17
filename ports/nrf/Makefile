@@ -53,6 +53,7 @@ ifeq ($(CIONIC_LIB), 1)
 INC += -I../../lib/cionic
 SRC_C += ../../lib/cionic/diff_filter.c
 SRC_C += ../../lib/cionic/emg_iir.c
+SRC_C += ../../lib/cionic/ringbuf.c
 endif
 
 #Debugging/Optimization
