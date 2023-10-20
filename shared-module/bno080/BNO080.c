@@ -465,6 +465,109 @@ STATIC void bno080_report_rotation(bno080_BNO080_obj_t *self, elapsed_t timestam
     self->fquat[3] = mp_obj_new_float(READ_LE(int16_t, &pkt[10])*scale);  // real
 }
 
+STATIC void bno080_report_accel(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
+{
+    /**
+     * 6.5.9.2 Accelerometer Input Report
+     *
+     * 0 Report ID = 0x23
+     * 1 Sequence number
+     * 2 Status
+     * 3 Delay
+     * 4 Accelerometer Axis X LSB
+     * 5 Accelerometer Axis X MSB
+     * 6 Accelerometer Axis Y LSB
+     * 7 Accelerometer Axis Y MSB
+     * 8 Accelerometer Axis Z LSB
+     * 9 Accelerometer Axis Z MSB
+     */
+    uint8_t qp = 8;  /// per section 6.5.10 Q Point = 8
+    // https://en.wikipedia.org/wiki/Q_(number_format)
+    float scale = pow(2.0, -qp);
+
+    self->accel[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
+    self->accel[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
+    self->accel[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+}
+
+STATIC void bno080_report_gyroscope(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int lens)
+{
+    /**
+     * 6.5.13.2 Gyroscope Input Report
+     *
+     * 0 Report ID = 0x02
+     * 1 Sequence number
+     * 2 Status
+     * 3 Delay
+     * 4 Gyroscope Axis X LSB
+     * 5 Gyroscope Axis X MSB
+     * 6 Gyroscope Axis Y LSB
+     * 7 Gyroscope Axis Y MSB
+     * 8 Gyroscope Axis Z LSB
+     * 9 Gyroscope Axis Z MSB
+     */
+    uint8_t qp = 9;  /// per section 6.5.13 Q Point = 9
+    float scale = pow(2.0, -qp);
+
+    self->gyro[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
+    self->gyro[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
+    self->gyro[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+}
+
+STATIC void bno080_report_magnetic_field(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
+{
+    /**
+     * 6.5.16.2 Magnetic Field Input Report
+     *
+     * 0 Report ID = 0x03
+     * 1 Sequence number
+     * 2 Status
+     * 3 Delay
+     * 4 Magnetic Field Axis X LSB
+     * 5 Magnetic Field Axis X MSB
+     * 6 Magnetic Field Axis Y LSB
+     * 7 Magnetic Field Axis Y MSB
+     * 8 Magnetic Field Axis Z LSB
+     * 9 Magnetic Field Axis Z MSB
+     */
+    uint8_t qp = 4;  /// per section 6.5.16 Q Point = 4
+    float scale = pow(2.0, -qp);
+
+    self->mag[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
+    self->mag[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
+    self->mag[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+}
+
+STATIC void bno080_report_grav(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
+{
+    /**
+    6.5.11.2 Input Report
+    Byte Description
+
+    0 Report ID = 0x06
+    1 Sequence number
+    2 Status
+    3 Delay
+    4 Gravity Axis X LSB
+    5 Gravity Axis X MSB
+    6 Gravity Axis Y LSB
+    7 Gravity Axis Y MSB
+    8 Gravity Axis Z LSB
+    9 Gravity Axis Z MSB
+    */
+    /*
+    The gravity sensor reports gravity in the device’s coordinate frame. The units are m/s^2. The Q point is 8. 
+    */
+
+    uint8_t qp = 8;  /// per section 6.5.10 Q Point = 8
+    // https://en.wikipedia.org/wiki/Q_(number_format)
+    float scale = pow(2.0, -qp);
+
+    self->grav[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
+    self->grav[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
+    self->grav[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+}
+
 STATIC void bno080_report(bno080_BNO080_obj_t *self, elapsed_t timestamp, uint8_t accuracy, const uint8_t *buf, int len)
 {
     // currently all reports must start with base timestamp reference
@@ -485,19 +588,16 @@ STATIC void bno080_report(bno080_BNO080_obj_t *self, elapsed_t timestamp, uint8_
         bno080_report_rotation(self, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET);
         break;
     case BNO080_SRID_ACCELEROMETER:
-        // bno080_check_accuracy(bno, BNO080_ACCURACY_ACCEL, accuracy);
-        // bno080_report_accel(bno, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET, accuracy);
+        bno080_report_accel(self, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET);
         break;
     case BNO080_SRID_GYROSCOPE:
-        // bno080_check_accuracy(bno, BNO080_ACCURACY_GYRO, accuracy);
-        // bno080_report_gyroscope(bno, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET, accuracy);
+        bno080_report_gyroscope(self, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET);
         break;
     case BNO080_SRID_MAGNETIC_FIELD:
-        // bno080_check_accuracy(bno, BNO080_ACCURACY_MAG, accuracy);
-        // bno080_report_magnetic_field(bno, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET, accuracy);
+        bno080_report_magnetic_field(self, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET);
         break;
     case BNO080_SRID_GRAVITY:
-        // bno080_report_grav(bno, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET, accuracy);
+        bno080_report_grav(self, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET);
         break;
     // IMU sensor values currently recorded raw
     case BNO080_SRID_LINEAR_ACCELERATION:
@@ -787,19 +887,13 @@ mp_obj_t common_hal_bno080_BNO080_read(bno080_BNO080_obj_t *self, uint8_t report
         case BNO080_SRID_ROTATION_VECTOR:
             return mp_obj_new_list(QUAT_DIMENSION, self->fquat);
         case BNO080_SRID_ACCELEROMETER:
-            // bno080_check_accuracy(bno, BNO080_ACCURACY_ACCEL, accuracy);
-            // bno080_report_accel(bno, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET, accuracy);
-            break;
+            return mp_obj_new_list(ACCEL_DIMENSION, self->accel);
         case BNO080_SRID_GYROSCOPE:
-            // bno080_check_accuracy(bno, BNO080_ACCURACY_GYRO, accuracy);
-            // bno080_report_gyroscope(bno, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET, accuracy);
-            break;
+            return mp_obj_new_list(GYRO_DIMENSION, self->gyro);
         case BNO080_SRID_MAGNETIC_FIELD:
-            // bno080_check_accuracy(bno, BNO080_ACCURACY_MAG, accuracy);
-            // bno080_report_magnetic_field(bno, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET, accuracy);
-            break;
+            return mp_obj_new_list(MAG_DIMENSION, self->mag);
         case BNO080_SRID_GRAVITY:
-            break;
+            return mp_obj_new_list(GRAV_DIMENSION, self->grav);
     }
 
     return NULL;

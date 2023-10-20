@@ -64,9 +64,13 @@
 
 #define BNO080_FRS_SLOTS           4
 
-#define CALIBRATION_LEN (5)
+#define CALIBRATION_LEN     (5)
 
-#define QUAT_DIMENSION (4)
+#define QUAT_DIMENSION      (4)
+#define ACCEL_DIMENSION     (3)
+#define GYRO_DIMENSION      (3)
+#define MAG_DIMENSION       (3)
+#define GRAV_DIMENSION      (3)
 
 enum {
     BNO080_QUAT_FLOAT=0,
@@ -115,6 +119,10 @@ typedef struct {
     uint8_t write_seqnums[BNO080_NUM_CHANNELS];
     // float quat[QUAT_DIMENSION];        // most recent quaternion sample
     mp_obj_t fquat[QUAT_DIMENSION];
+    mp_obj_t accel[ACCEL_DIMENSION];
+    mp_obj_t gyro[GYRO_DIMENSION];
+    mp_obj_t mag[MAG_DIMENSION];
+    mp_obj_t grav[GRAV_DIMENSION];
     float calibration[CALIBRATION_LEN]; // calibration data
     uint8_t accuracy[BNO080_ACCURACY_COUNT];
     int selected_rotation;
