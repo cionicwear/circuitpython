@@ -106,6 +106,9 @@ endif
 ifeq ($(CIRCUITPY_ADS1x9x),1)
 SRC_PATTERNS += ads1x9x/%
 endif
+ifeq ($(CIRCUITPY_BNO080),1)
+SRC_PATTERNS += bno080/%
+endif
 ifeq ($(CIRCUITPY_AESIO),1)
 SRC_PATTERNS += aesio/%
 endif
@@ -566,6 +569,8 @@ SRC_SHARED_MODULE_ALL = \
 	adafruit_pixelbuf/__init__.c \
 	ads1x9x/ADS1x9x.c \
 	ads1x9x/__init__.c \
+	bno080/BNO080.c \
+	bno080/__init__.c \
 	_pixelmap/PixelMap.c \
 	_pixelmap/__init__.c \
 	_stage/Layer.c \
