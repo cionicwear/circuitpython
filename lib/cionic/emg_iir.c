@@ -15,6 +15,10 @@ float emg_lowpass_filter_sos[NO_OF_BQS][NO_OF_COEFFS_PER_BQ] = {
     {1.0,2.0,1.0,1.0,-1.4083885078365557,0.7369080185138834},
 };
 
+uint8_t emg_sub_sampling_rate = 1;   
+uint16_t ma_size = EMG_RMS_MA_SIZE;   
+
+
 // takes as input a bank of biquad coefficients ( NO_OF_BQS of them ) with the
 // order of the coefficients as shown below. conveniently, this is the same
 // order of the SOS ( second order section ) coefficients as produced by the
@@ -80,12 +84,12 @@ emg_mwa_rms(emg_mwa_state_t *state, float val)
     state->sum -= state->mw[state->write_ptr];    
     // update the delay line
     state->mw[state->write_ptr] = val*val;    
-    state->write_ptr = (state->write_ptr+1) % EMG_RMS_MA_SIZE;
+    state->write_ptr = (state->write_ptr+1) % ma_size;
 
     // the latest sum
     state->sum += val*val;
     double result = state->sum;
-    result = sqrt(result/EMG_RMS_MA_SIZE);
+    result = sqrt(result/ma_size);
 #ifdef EMG_RMS_DC_BLOCKING
     result = result + state->dc; 
     state->dc = state->dc - result*state->alpha;
@@ -101,7 +105,8 @@ emg_mwa_rms(emg_mwa_state_t *state, float val)
 void
 iir_filter_init(iir_filter_t *filter)
 {
-    filter->emg_rms_sub_sample_counter = EMG_RMS_SUBSAMPLING_FACTOR;
+    filter->emg_rms_sub_sample_counter = emg_sub_sampling_rate;
+    ma_size = EMG_RMS_MA_SIZE/emg_sub_sampling_rate;
     for( int i=0; i<IIR_NUM_CHANNELS; i++) {
         emg_iir_init(&filter->emg_lowpass_iir_state[i]);
         emg_iir_init(&filter->emg_highpass_iir_state[i]);
@@ -140,7 +145,7 @@ iir_filter_process(iir_filter_t *filter, float *norms, int numchans,
     if (filter->emg_rms_sub_sample_counter <= 0)
     {
         *ts_out = ts_in;
-        filter->emg_rms_sub_sample_counter = EMG_RMS_SUBSAMPLING_FACTOR;
+        filter->emg_rms_sub_sample_counter = emg_sub_sampling_rate;
         return 0;
     }
 

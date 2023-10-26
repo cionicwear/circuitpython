@@ -12,8 +12,9 @@
 #define EMG_RMS_FILTER_ORDER (6)
 #define EMG_RMS_HIGHPASS_FC (50)
 #define EMG_RMS_LOWPASS_FC (199)
-#define EMG_RMS_SUBSAMPLING_FACTOR (5)  
-#define EMG_RMS_MA_SIZE (300/(EMG_RMS_SUBSAMPLING_FACTOR))
+// #define EMG_RMS_SUBSAMPLING_FACTOR (5)  
+// #define EMG_RMS_MA_SIZE (300/(EMG_RMS_SUBSAMPLING_FACTOR))
+#define EMG_RMS_MA_SIZE (256)   // maximum size
 #define EMG_RMS_MA_DC_BLOCK_FC (0.001)
 #define EMG_RMS_MA_DC_BLOCK_ALPHA (2*M_PI*EMG_RMS_MA_DC_BLOCK_FC/EMG_RMS_FS)
 
@@ -35,7 +36,7 @@ typedef struct emg_mwa_state {
 } emg_mwa_state_t;
 
 typedef struct iir_filter_t {
-    int emg_rms_sub_sample_counter;
+    uint8_t emg_rms_sub_sample_counter;
     emg_filter_state_t emg_lowpass_iir_state[IIR_NUM_CHANNELS]; 
     emg_filter_state_t emg_highpass_iir_state[IIR_NUM_CHANNELS]; 
     emg_mwa_state_t emg_mwa_state[IIR_NUM_CHANNELS];
@@ -51,5 +52,9 @@ int iir_filter_process(iir_filter_t *filter, float *norms, int numchans,
                         elapsed_t ts_in, const uint8_t *buffer,
                         elapsed_t *ts_out, float *uv_out);
 
+// generated coefficients
+extern float emg_highpass_filter_sos[NO_OF_BQS][NO_OF_COEFFS_PER_BQ];
+extern float emg_lowpass_filter_sos[NO_OF_BQS][NO_OF_COEFFS_PER_BQ];
+extern uint8_t emg_sub_sampling_rate; 
 
 #endif //_EMG_IIR_H_

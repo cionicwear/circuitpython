@@ -217,10 +217,28 @@ STATIC mp_obj_t ads1x9x_ads1x9x_deinit(mp_obj_t self_in) {
 }
 MP_DEFINE_CONST_FUN_OBJ_1(ads1x9x_ads1x9x_deinit_obj, ads1x9x_ads1x9x_deinit);
 
+STATIC mp_obj_t ads1x9x_ads1x9x_set_emg_filter(mp_obj_t self_in, mp_obj_t coeffs_list, mp_obj_t low) {
+    ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *) self_in;
+    set_emg_filter(self, coeffs_list, low);
+    return mp_const_none;
+}
+
+MP_DEFINE_CONST_FUN_OBJ_3(ads1x9x_ads1x9x_set_emg_filter_obj, ads1x9x_ads1x9x_set_emg_filter);
+
+STATIC mp_obj_t ads1x9x_ads1x9x_set_emg_decim_rate(mp_obj_t self_in, mp_obj_t decim_rate) {
+    ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *) self_in;
+    set_emg_decim_rate(self, decim_rate);
+    return mp_const_none;
+}
+
+MP_DEFINE_CONST_FUN_OBJ_2(ads1x9x_ads1x9x_set_emg_decim_rate_obj, ads1x9x_ads1x9x_set_emg_decim_rate);
+
 STATIC const mp_rom_map_elem_t ads1x9x_ads1x9x_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_reset), MP_ROM_PTR(&ads1x9x_ads1x9x_reset_obj) },
     { MP_ROM_QSTR(MP_QSTR_sample_size_get), MP_ROM_PTR(&ads1x9x_ads1x9x_sample_size_get_obj) },
     { MP_ROM_QSTR(MP_QSTR_filter_set), MP_ROM_PTR(&ads1x9x_ads1x9x_filter_set_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_emg_filter), MP_ROM_PTR(&ads1x9x_ads1x9x_set_emg_filter_obj) },
+    { MP_ROM_QSTR(MP_QSTR_set_emg_decim_rate), MP_ROM_PTR(&ads1x9x_ads1x9x_set_emg_decim_rate_obj) },
     { MP_ROM_QSTR(MP_QSTR_read_reg), MP_ROM_PTR(&ads1x9x_ads1x9x_read_reg_obj) },
     { MP_ROM_QSTR(MP_QSTR_write_reg), MP_ROM_PTR(&ads1x9x_ads1x9x_write_reg_obj) },
     { MP_ROM_QSTR(MP_QSTR_start), MP_ROM_PTR(&ads1x9x_ads1x9x_start_obj) },

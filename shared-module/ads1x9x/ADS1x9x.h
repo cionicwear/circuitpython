@@ -125,5 +125,7 @@ uint8_t common_hal_ads1x9x_ADS1x9x_read_reg(ads1x9x_ADS1x9x_obj_t *self, uint8_t
 void common_hal_ads1x9x_ADS1x9x_write_reg(ads1x9x_ADS1x9x_obj_t *self, uint8_t addr, uint8_t value);
 void common_hal_ads1x9x_ADS1x9x_read_data(ads1x9x_ADS1x9x_obj_t *self, uint8_t *data, uint16_t len);
 size_t common_hal_ads1x9x_ADS1x9x_read(ads1x9x_ADS1x9x_obj_t *self, mp_buffer_info_t *buf, uint16_t buf_size);
+void set_emg_filter(ads1x9x_ADS1x9x_obj_t *self, mp_obj_t coeffs_list, mp_obj_t low);
+void set_emg_decim_rate(ads1x9x_ADS1x9x_obj_t *self, mp_obj_t decim_rate);
 
 #endif // MICROPY_INCLUDED_SHARED_MODULE_ADS129X_ADS129X_H
