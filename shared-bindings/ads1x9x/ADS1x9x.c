@@ -36,6 +36,7 @@
 #include "shared-bindings/busio/SPI.h"
 #include "shared-bindings/microcontroller/Pin.h"
 #include "supervisor/flash.h"
+#include "lib/cionic/emg_iir.h"
 
 //| class ADS1x9x:
 //|     """ADS1x9x Interface
@@ -218,16 +219,14 @@ STATIC mp_obj_t ads1x9x_ads1x9x_deinit(mp_obj_t self_in) {
 MP_DEFINE_CONST_FUN_OBJ_1(ads1x9x_ads1x9x_deinit_obj, ads1x9x_ads1x9x_deinit);
 
 STATIC mp_obj_t ads1x9x_ads1x9x_set_emg_filter(mp_obj_t self_in, mp_obj_t coeffs_list, mp_obj_t low) {
-    ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *) self_in;
-    set_emg_filter(self, coeffs_list, low);
+    set_emg_filter(coeffs_list, low);
     return mp_const_none;
 }
 
 MP_DEFINE_CONST_FUN_OBJ_3(ads1x9x_ads1x9x_set_emg_filter_obj, ads1x9x_ads1x9x_set_emg_filter);
 
 STATIC mp_obj_t ads1x9x_ads1x9x_set_emg_decim_rate(mp_obj_t self_in, mp_obj_t decim_rate) {
-    ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *) self_in;
-    set_emg_decim_rate(self, decim_rate);
+    set_emg_decim_rate(decim_rate);
     return mp_const_none;
 }
 

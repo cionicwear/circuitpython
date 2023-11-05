@@ -55,6 +55,7 @@ int iir_filter_process(iir_filter_t *filter, float *norms, int numchans,
 // generated coefficients
 extern float emg_highpass_filter_sos[NO_OF_BQS][NO_OF_COEFFS_PER_BQ];
 extern float emg_lowpass_filter_sos[NO_OF_BQS][NO_OF_COEFFS_PER_BQ];
-extern uint8_t emg_sub_sampling_rate; 
+void set_emg_filter(mp_obj_t coeffs_list, mp_obj_t low);
+void set_emg_decim_rate(mp_obj_t decim_rate);
 
 #endif //_EMG_IIR_H_

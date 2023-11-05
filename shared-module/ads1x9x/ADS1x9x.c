@@ -33,7 +33,6 @@
 #include "shared-bindings/time/__init__.h"
 #include "shared-bindings/util.h"
 #include "shared-bindings/digitalio/DigitalInOut.h"
-#include "lib/cionic/emg_iir.h"
 
 #include "py/mperrno.h"
 #include <string.h>
@@ -104,6 +103,7 @@ STATIC void ads129x_raw(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out)
     int16_t ads_sample;
 
     for(i = 0 ; i < ADS1X9X_NUM_CHAN ; i++){
+        // int16_t, not int24_t?
         ads_sample = READ_BE(int16_t, in);
         out[i] = (float)ads_sample * self->all_norms[i];
         in += 2;
@@ -324,39 +324,4 @@ size_t common_hal_ads1x9x_ADS1x9x_read(ads1x9x_ADS1x9x_obj_t *self, mp_buffer_in
 
     memcpy(ptr, g_ads_buffer, buf_size);
     return buf_size;
-}
-
-void set_emg_filter(ads1x9x_ADS1x9x_obj_t *self, mp_obj_t coeffs_list, mp_obj_t low) 
-{
-
-    size_t array_size = 0;
-    mp_obj_t *values;
-    mp_obj_get_array(coeffs_list, &array_size, &values);
-    
-
-    float (*emg_filter)[NO_OF_COEFFS_PER_BQ];
-
-    if (low == mp_const_true) {
-        emg_filter = emg_lowpass_filter_sos;
-        mp_printf(&mp_plat_print, "setting the low pass filter bank \n");
-    } else {
-        emg_filter = emg_highpass_filter_sos;
-        mp_printf(&mp_plat_print, "setting the high pass filter bank \n");
-    }
-    
-    for (int i = 0; i < NO_OF_BQS; i++) {
-        mp_printf(&mp_plat_print, "------------------------\n");
-        mp_printf(&mp_plat_print, "bank %d:\n", i);
-        for (int j = 0; j < NO_OF_COEFFS_PER_BQ; j++) {
-            emg_filter[i][j] = mp_obj_get_float(values[i*NO_OF_COEFFS_PER_BQ+j]);
-            mp_printf(&mp_plat_print, "c[%d][%d]: %f;", i, j, (double) emg_filter[i][j]);
-        }
-        mp_printf(&mp_plat_print, "\n");
-    }
-}
-
-void set_emg_decim_rate(ads1x9x_ADS1x9x_obj_t *self, mp_obj_t decim_rate)
-{
-    emg_sub_sampling_rate =  mp_obj_get_int(decim_rate); 
-    mp_printf(&mp_plat_print, "emg decimation rate set to: %d\n", emg_sub_sampling_rate);
 }
