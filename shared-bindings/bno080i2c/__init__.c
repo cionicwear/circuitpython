@@ -30,15 +30,15 @@
 #include "py/obj.h"
 #include "py/runtime.h"
 
-#include "shared-bindings/bno080/__init__.h"
-#include "shared-bindings/bno080/BNO080ReportId.h"
-#include "shared-bindings/bno080/BNO080.h"
-//| """Interface to an BNO080 via the SPI bus"""
+#include "shared-bindings/bno080i2c/__init__.h"
+#include "shared-bindings/bno080i2c/BNO080I2CReportId.h"
+#include "shared-bindings/bno080i2c/BNO080I2C.h"
+//| """Interface to an BNO080 via the I2C bus"""
 
 STATIC const mp_rom_map_elem_t bno080i2c_module_globals_table[] = {
-    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_bno080) },
+    { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_bno080i2c) },
     // { MP_ROM_QSTR(MP_QSTR_BNO080ReportId),   MP_ROM_PTR(&bno080_bno080reportid_type) },
-    { MP_ROM_QSTR(MP_QSTR_BNO080), MP_ROM_PTR(&bno080i2c_BNO080_type) },
+    { MP_ROM_QSTR(MP_QSTR_BNO080i2c), MP_ROM_PTR(&bno080i2c_BNO080I2C_type) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(bno080i2c_module_globals, bno080i2c_module_globals_table);
@@ -48,4 +48,4 @@ const mp_obj_module_t bno080i2c_module = {
     .globals = (mp_obj_dict_t *)&bno080i2c_module_globals,
 };
 
-MP_REGISTER_MODULE(MP_QSTR_bno080, bno080i2c_module, CIRCUITPY_BNO080);
+MP_REGISTER_MODULE(MP_QSTR_bno080i2c, bno080i2c_module, CIRCUITPY_BNO080I2C);
