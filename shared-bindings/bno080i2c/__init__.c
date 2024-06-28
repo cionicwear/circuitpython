@@ -38,7 +38,7 @@
 STATIC const mp_rom_map_elem_t bno080i2c_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_bno080i2c) },
     // { MP_ROM_QSTR(MP_QSTR_BNO080ReportId),   MP_ROM_PTR(&bno080_bno080reportid_type) },
-    { MP_ROM_QSTR(MP_QSTR_BNO080i2c), MP_ROM_PTR(&bno080i2c_BNO080I2C_type) },
+    { MP_ROM_QSTR(MP_QSTR_BNO080I2C), MP_ROM_PTR(&bno080i2c_BNO080I2C_type) },
 };
 
 STATIC MP_DEFINE_CONST_DICT(bno080i2c_module_globals, bno080i2c_module_globals_table);
