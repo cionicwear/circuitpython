@@ -46,7 +46,7 @@
 //|     Interacts with an BNO080 over I2C."""
 //|
 //|     def __init__(
-//|         self, bus: busio.I2C, sda: microcontroller.Pin, scl: microcontroller.Pin, addr: int = 0x4B,rst: microcontroller.Pin,
+//|         self, bus: busio.I2C, sda: microcontroller.Pin, scl: microcontroller.Pin, addr: int = 0x4A,rst: microcontroller.Pin,
 //|         drdy: microcontroller.Pin, start: microcontroller.Pin, pwdn: microcontroller.Pin
 //|     ) -> None:
 //|         """Construct a BNO080I2C object with the given properties
@@ -57,6 +57,7 @@
 //|         :param microcontroller.Pin ps0: The BNO080 PS0/Wake pin
 //|         :param microcontroller.Pin bootn: The BNO080 bootn pin
 //|         :param microcontroller.Pin irq: The BNO080 interrupt pin
+//|         :param bool debug: Enable debugging output (optional, default=False)
 //|
 //|         Example usage:
 //|
@@ -70,7 +71,7 @@
 //|             bno = bno080i2c.BNO080I2C(board.I2C(), board.ADDR, board.BNO_RST, board.BNO_PS0, board.BNO_BOOTN, board.BNO_INT)
 
 STATIC mp_obj_t bno080i2c_bno080i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    enum { ARG_i2c, ARG_addr, ARG_rst, ARG_ps0, ARG_bootn, ARG_irq, NUM_ARGS };
+    enum { ARG_i2c, ARG_addr, ARG_rst, ARG_ps0, ARG_bootn, ARG_irq, ARG_debug, NUM_ARGS };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_i2c, MP_ARG_OBJ, {.u_obj = mp_const_none } },
         { MP_QSTR_addr, MP_ARG_INT, {.u_int = 0x4B} },
@@ -78,6 +79,7 @@ STATIC mp_obj_t bno080i2c_bno080i2c_make_new(const mp_obj_type_t *type, size_t n
         { MP_QSTR_ps0, MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_bootn, MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_irq, MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        { MP_QSTR_debug, MP_ARG_BOOL, {.u_bool = false} },
     };
     MP_STATIC_ASSERT(MP_ARRAY_SIZE(allowed_args) == NUM_ARGS);
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
@@ -85,17 +87,27 @@ STATIC mp_obj_t bno080i2c_bno080i2c_make_new(const mp_obj_type_t *type, size_t n
 
     // busio_i2c_obj_t *i2c = validate_obj_is_i2c_bus(args[ARG_i2c].u_obj, MP_QSTR_i2c);
     busio_i2c_obj_t *i2c = MP_OBJ_TO_PTR(args[ARG_i2c].u_obj);
-    // cast addr to int pointer
     int8_t addr = args[ARG_addr].u_int;
+    if (common_hal_busio_i2c_probe(i2c, addr) == false) {
+        mp_raise_OSError(ENODEV);
+    }
     const mcu_pin_obj_t *rst = validate_obj_is_free_pin(args[ARG_rst].u_obj, MP_QSTR_rst);
     const mcu_pin_obj_t *ps0 = validate_obj_is_free_pin(args[ARG_ps0].u_obj, MP_QSTR_ps0);
     const mcu_pin_obj_t *bootn = validate_obj_is_free_pin(args[ARG_bootn].u_obj, MP_QSTR_bootn);
     const mcu_pin_obj_t *irq = validate_obj_is_free_pin(args[ARG_irq].u_obj, MP_QSTR_irq);
+    bool debug = args[ARG_debug].u_bool;
+
+    if (debug) {
+        mp_printf(&mp_plat_print, "Called bno080i2c_BNO080I2C_make_new\n");
+    }
 
     bno080i2c_BNO080I2C_obj_t *self = m_new_obj(bno080i2c_BNO080I2C_obj_t);
     self->base.type = &bno080i2c_BNO080I2C_type;
 
-    common_hal_bno080i2c_BNO080I2C_construct(self, i2c, addr, rst, ps0, bootn, irq);
+    common_hal_bno080i2c_BNO080I2C_construct(self, i2c, addr, rst, ps0, bootn, irq, debug);
+    if (debug) {
+        mp_printf(&mp_plat_print, "Constructed bno080i2c_BNO080I2C\n");
+    }
 
     return self;
 }
@@ -105,8 +117,12 @@ STATIC mp_obj_t bno080i2c_bno080i2c_make_new(const mp_obj_type_t *type, size_t n
 //|
 //|         :return: None"""
 STATIC mp_obj_t bno080i2c_BNO080I2C_reset(mp_obj_t self_in) {
+    if (((bno080i2c_BNO080I2C_obj_t *)self_in)->debug) {
+        mp_printf(&mp_plat_print, "Called bno080i2c_BNO080I2C_reset\n");
+    }
+
     bno080i2c_BNO080I2C_obj_t *self = (bno080i2c_BNO080I2C_obj_t *)self_in;
-    common_hal_bno080i2c_BNO080I2C_reset(self);
+    common_hal_bno080i2c_BNO080I2C_soft_reset(self);
     return mp_const_none;
 }
 MP_DEFINE_CONST_FUN_OBJ_1(bno080i2c_bno080i2c_reset_obj, bno080i2c_BNO080I2C_reset);
@@ -116,6 +132,10 @@ MP_DEFINE_CONST_FUN_OBJ_1(bno080i2c_bno080i2c_reset_obj, bno080i2c_BNO080I2C_res
 //|
 //|         :return: None"""
 STATIC mp_obj_t bno080i2c_BNO080I2C_deinit(mp_obj_t self_in) {
+    if (((bno080i2c_BNO080I2C_obj_t *)self_in)->debug) {
+        mp_printf(&mp_plat_print, "Called bno080i2c_BNO080I2C_deinit\n");
+    }
+
     bno080i2c_BNO080I2C_obj_t *self = (bno080i2c_BNO080I2C_obj_t *)self_in;
     common_hal_bno080i2c_BNO080I2C_deinit(self);
     return mp_const_none;
@@ -128,6 +148,11 @@ MP_DEFINE_CONST_FUN_OBJ_1(bno080i2c_bno080i2c_deinit_obj, bno080i2c_BNO080I2C_de
 //|         :return: None"""
 
 STATIC mp_obj_t bno080i2c_BNO080I2C_set_feature(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+    bno080i2c_BNO080I2C_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
+    if (self->debug) {
+        mp_printf(&mp_plat_print, "Called bno080i2c_BNO080I2C_set_feature\n");
+    }
+
     enum { ARG_feature, ARG_refresh_us, ARG_batch_us, ARG_flags, ARG_sns, ARG_cfg, NUM_ARGS };
     
     static const mp_arg_t allowed_args[] = {
@@ -139,7 +164,7 @@ STATIC mp_obj_t bno080i2c_BNO080I2C_set_feature(size_t n_args, const mp_obj_t *p
         { MP_QSTR_cfg,   MP_ARG_INT | MP_ARG_KW_ONLY, {.u_int = 0} },
     };
 
-    bno080i2c_BNO080I2C_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
+    // bno080i2c_BNO080I2C_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
     
@@ -156,6 +181,9 @@ MP_DEFINE_CONST_FUN_OBJ_KW(bno080i2c_bno080i2c_set_feature_obj, 1, bno080i2c_BNO
 
 
 STATIC mp_obj_t bno080i2c_bno080i2c_read(mp_obj_t self_in, mp_obj_t id) {
+    // print that read is called
+    mp_printf(&mp_plat_print, "bno080i2c_BNO080I2C_read\n");
+
     bno080i2c_BNO080I2C_obj_t *self = (bno080i2c_BNO080I2C_obj_t *)self_in;
     uint32_t report_id = mp_obj_get_int(id);
 

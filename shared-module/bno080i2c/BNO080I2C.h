@@ -30,6 +30,7 @@
 #include "py/obj.h"
 
 #include "lib/cionic/utils.h"
+#include "lib/cionic/ringbuf.h"
 
 #include "common-hal/busio/I2C.h"
 #include "common-hal/digitalio/DigitalInOut.h"
@@ -107,14 +108,16 @@ typedef struct bno080i2c_frs_t {
 
 typedef struct {
     mp_obj_base_t base;
+    bool debug; // debug flag
     busio_i2c_obj_t *bus;
     bno080i2c_pid_t pid;
     int8_t addr;
-    digitalio_digitalinout_obj_t cs;
     digitalio_digitalinout_obj_t rst;
     digitalio_digitalinout_obj_t ps0;
     digitalio_digitalinout_obj_t bootn;
     digitalio_digitalinout_obj_t irq;
+    ringbuf_t data_buf;
+    ringbuf_t cmd_buf;
     bno080i2c_frs_t frs_saved[BNO080_FRS_SLOTS];
     uint8_t read_seqnums[BNO080_NUM_CHANNELS];
     uint8_t write_seqnums[BNO080_NUM_CHANNELS];
@@ -125,6 +128,7 @@ typedef struct {
     mp_obj_t mag[MAG_DIMENSION];
     mp_obj_t grav[GRAV_DIMENSION];
     float calibration[CALIBRATION_LEN]; // calibration data
+    bool calibration_complete;
     uint8_t accuracy[BNO080_ACCURACY_COUNT];
     int selected_rotation;
     int frs_read;
@@ -138,8 +142,8 @@ typedef struct {
     bool init_done;
 } bno080i2c_BNO080I2C_obj_t;
 
-void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, busio_i2c_obj_t *bus, const int8_t addr, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *ps0, const mcu_pin_obj_t *bootn, const mcu_pin_obj_t *irq);
-void common_hal_bno080i2c_BNO080I2C_reset(bno080i2c_BNO080I2C_obj_t *self);
+void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, busio_i2c_obj_t *bus, const int8_t addr, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *ps0, const mcu_pin_obj_t *bootn, const mcu_pin_obj_t *irq, bool debug);
+void common_hal_bno080i2c_BNO080I2C_soft_reset(bno080i2c_BNO080I2C_obj_t *self);
 int common_hal_bno080i2c_BNO080I2C_set_feature(bno080i2c_BNO080I2C_obj_t *self, uint8_t feature, uint32_t refresh_us, uint32_t batch_us, uint8_t flags, uint16_t sns, uint32_t cfg);
 mp_obj_t common_hal_bno080i2c_BNO080I2C_read(bno080i2c_BNO080I2C_obj_t *self, uint8_t report_id);
 void common_hal_bno080i2c_BNO080I2C_deinit(bno080i2c_BNO080I2C_obj_t *self);
