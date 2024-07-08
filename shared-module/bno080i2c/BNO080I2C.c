@@ -790,6 +790,8 @@ STATIC int bno080i2c_sample(bno080i2c_BNO080I2C_obj_t *self)
         return -1;
     }
 
+    mp_printf(&mp_plat_print, "rx: channel %d seqnum %d len %d\n", buf[2], buf[3], len);
+
     uint8_t channel = buf[2];
     uint8_t seqnum = buf[3];
     uint8_t expectedseq = self->read_seqnums[channel]+2;
@@ -808,6 +810,22 @@ STATIC int bno080i2c_read_pid(bno080i2c_BNO080I2C_obj_t *self)
     const uint8_t command[] = {
         BNO080_PRODUCT_ID_REQUEST,  
         0,                          // Reserved
+    };
+    
+    bno080i2c_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
+    // bno080i2c_sample(self);
+
+    // bno080i2c_wait_for_response(self, BNO080_PRODUCT_ID_RESPONSE);
+    return 0;
+}
+
+STATIC int bno080i2c_reinit(bno080i2c_BNO080I2C_obj_t *self)
+{
+    const uint8_t command[] = {
+        BNO080_COMMAND_REQ,
+        self->write_seqnums[BNO080_CHANNEL_CONTROL],
+        BNO080_COMMAND_INITIALIZE, 
+        0x01,                // Initialize whole sensor hub
     };
     
     bno080i2c_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
@@ -837,7 +855,7 @@ STATIC int bno080i2c_read_pid(bno080i2c_BNO080I2C_obj_t *self)
 //     bno080i2c_i2c_sample(self);
 // }
 
-void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, busio_i2c_obj_t *bus, const int8_t addr, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *ps0, const mcu_pin_obj_t *bootn, const mcu_pin_obj_t *irq, bool debug) { 
+void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, busio_i2c_obj_t *bus, const int8_t addr, bool debug) { 
     // print that construct is being called
     if (self->debug) {
         mp_printf(&mp_plat_print, "hal construct called\n");
@@ -849,19 +867,6 @@ void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, b
     self->addr = addr;
     self->debug = debug;
     self->calibration_complete = false;
-    common_hal_digitalio_digitalinout_construct(&self->rst, rst);
-    common_hal_digitalio_digitalinout_switch_to_output(&self->rst, true, DRIVE_MODE_PUSH_PULL);
-    common_hal_digitalio_digitalinout_construct(&self->ps0, ps0);
-    common_hal_digitalio_digitalinout_switch_to_output(&self->ps0, true, DRIVE_MODE_PUSH_PULL);
-    common_hal_digitalio_digitalinout_construct(&self->bootn, bootn);
-    common_hal_digitalio_digitalinout_switch_to_output(&self->bootn, true, DRIVE_MODE_PUSH_PULL);
-    // common_hal_digitalio_digitalinout_construct(&self->irq, irq);
-    // common_hal_digitalio_digitalinout_set_irq(&self->irq, EDGE_FALL, PULL_UP, bno080i2c_isr_recv, self);
-
-    // lock_bus(self);
-    // common_hal_busio_i2c_con
-    // common_hal_busio_spi_configure(self->bus, BNO_BAUDRATE, 1, 1, 8);
-    // unlock_bus(self);
 
     if (self->debug) {
         mp_printf(&mp_plat_print, "Soft resetting...\n");
@@ -881,7 +886,7 @@ void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, b
         if (i == 5) {
             mp_raise_OSError(ENODEV);
         }
-        mp_hal_delay_ms(500);
+        mp_hal_delay_ms(250);
     }
     
     mp_printf(&mp_plat_print, "BNO id=%x found\n", self->pid.id);
@@ -892,7 +897,6 @@ void common_hal_bno080i2c_BNO080I2C_soft_reset(bno080i2c_BNO080I2C_obj_t *self) 
     if (self->debug) {
         mp_printf(&mp_plat_print, "hal soft reset called\n");
     }
-    // uint8_t command[1] = {1};
     uint8_t command[1] = { 0x01 };
     // uint8_t command[] = {
     //     BNO080_COMMAND_REQ,
@@ -900,7 +904,7 @@ void common_hal_bno080i2c_BNO080I2C_soft_reset(bno080i2c_BNO080I2C_obj_t *self) 
     //     BNO080_COMMAND_DCD_CLEAR,
     // };
 
-    bno080i2c_send(self, BNO080_CHANNEL_EXECUTE, command, sizeof(command));
+    // bno080i2c_send(self, BNO080_CHANNEL_EXECUTE, command, sizeof(command));
     // bno080i2c_sample(self);
     mp_hal_delay_ms(500);
 
@@ -918,6 +922,20 @@ void common_hal_bno080i2c_BNO080I2C_soft_reset(bno080i2c_BNO080I2C_obj_t *self) 
         }
         mp_handle_pending(true);
         bno080i2c_sample(self);
+        mp_hal_delay_ms(250);
+    }
+    
+    bno080i2c_reinit(self);
+    bno080i2c_send(self, BNO080_CHANNEL_EXECUTE, command, sizeof(command));
+    // bno080i2c_sample(self);
+    mp_hal_delay_ms(500);
+    for (int i = 0; i < 3; i++) {
+        if (self->debug) {
+            mp_printf(&mp_plat_print, "Waiting for reinit to complete\n");
+        }
+        mp_handle_pending(true);
+        bno080i2c_sample(self);
+        mp_hal_delay_ms(250);
     }
 
     if (self->debug) {
@@ -1022,9 +1040,9 @@ void common_hal_bno080i2c_BNO080I2C_deinit(bno080i2c_BNO080I2C_obj_t *self) {
     
     self->bus = 0;
 
-    common_hal_digitalio_digitalinout_deinit(&self->rst);
-    common_hal_digitalio_digitalinout_deinit(&self->ps0);
-    common_hal_digitalio_digitalinout_deinit(&self->bootn);
-    common_hal_digitalio_digitalinout_deinit(&self->irq);
+    // common_hal_digitalio_digitalinout_deinit(&self->rst);
+    // common_hal_digitalio_digitalinout_deinit(&self->ps0);
+    // common_hal_digitalio_digitalinout_deinit(&self->bootn);
+    // common_hal_digitalio_digitalinout_deinit(&self->irq);
     return;
 }

@@ -143,7 +143,7 @@ typedef struct {
     bool init_done;
 } bno080i2c_BNO080I2C_obj_t;
 
-void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, busio_i2c_obj_t *bus, const int8_t addr, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *ps0, const mcu_pin_obj_t *bootn, const mcu_pin_obj_t *irq, bool debug);
+void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, busio_i2c_obj_t *bus, const int8_t addr, bool debug);
 void common_hal_bno080i2c_BNO080I2C_soft_reset(bno080i2c_BNO080I2C_obj_t *self);
 int common_hal_bno080i2c_BNO080I2C_set_feature(bno080i2c_BNO080I2C_obj_t *self, uint8_t feature, uint32_t refresh_us, uint32_t batch_us, uint8_t flags, uint16_t sns, uint32_t cfg);
 mp_obj_t common_hal_bno080i2c_BNO080I2C_read(bno080i2c_BNO080I2C_obj_t *self, uint8_t report_id);

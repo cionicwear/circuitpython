@@ -71,14 +71,16 @@
 //|             bno = bno080i2c.BNO080I2C(board.I2C(), board.ADDR, board.BNO_RST, board.BNO_PS0, board.BNO_BOOTN, board.BNO_INT)
 
 STATIC mp_obj_t bno080i2c_bno080i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    enum { ARG_i2c, ARG_addr, ARG_rst, ARG_ps0, ARG_bootn, ARG_irq, ARG_debug, NUM_ARGS };
+    enum { ARG_i2c, ARG_addr, 
+    // ARG_rst, ARG_ps0, ARG_bootn, ARG_irq, 
+    ARG_debug, NUM_ARGS };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_i2c, MP_ARG_OBJ, {.u_obj = mp_const_none } },
         { MP_QSTR_addr, MP_ARG_INT, {.u_int = 0x4B} },
-        { MP_QSTR_rst, MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_ps0, MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_bootn, MP_ARG_OBJ, {.u_obj = mp_const_none} },
-        { MP_QSTR_irq, MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        // { MP_QSTR_rst, MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        // { MP_QSTR_ps0, MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        // { MP_QSTR_bootn, MP_ARG_OBJ, {.u_obj = mp_const_none} },
+        // { MP_QSTR_irq, MP_ARG_OBJ, {.u_obj = mp_const_none} },
         { MP_QSTR_debug, MP_ARG_BOOL, {.u_bool = false} },
     };
     MP_STATIC_ASSERT(MP_ARRAY_SIZE(allowed_args) == NUM_ARGS);
@@ -91,10 +93,10 @@ STATIC mp_obj_t bno080i2c_bno080i2c_make_new(const mp_obj_type_t *type, size_t n
     if (common_hal_busio_i2c_probe(i2c, addr) == false) {
         mp_raise_OSError(ENODEV);
     }
-    const mcu_pin_obj_t *rst = validate_obj_is_free_pin(args[ARG_rst].u_obj, MP_QSTR_rst);
-    const mcu_pin_obj_t *ps0 = validate_obj_is_free_pin(args[ARG_ps0].u_obj, MP_QSTR_ps0);
-    const mcu_pin_obj_t *bootn = validate_obj_is_free_pin(args[ARG_bootn].u_obj, MP_QSTR_bootn);
-    const mcu_pin_obj_t *irq = validate_obj_is_free_pin(args[ARG_irq].u_obj, MP_QSTR_irq);
+    // const mcu_pin_obj_t *rst = validate_obj_is_free_pin(args[ARG_rst].u_obj, MP_QSTR_rst);
+    // const mcu_pin_obj_t *ps0 = validate_obj_is_free_pin(args[ARG_ps0].u_obj, MP_QSTR_ps0);
+    // const mcu_pin_obj_t *bootn = validate_obj_is_free_pin(args[ARG_bootn].u_obj, MP_QSTR_bootn);
+    // const mcu_pin_obj_t *irq = validate_obj_is_free_pin(args[ARG_irq].u_obj, MP_QSTR_irq);
     bool debug = args[ARG_debug].u_bool;
 
     if (debug) {
@@ -104,7 +106,7 @@ STATIC mp_obj_t bno080i2c_bno080i2c_make_new(const mp_obj_type_t *type, size_t n
     bno080i2c_BNO080I2C_obj_t *self = m_new_obj(bno080i2c_BNO080I2C_obj_t);
     self->base.type = &bno080i2c_BNO080I2C_type;
 
-    common_hal_bno080i2c_BNO080I2C_construct(self, i2c, addr, rst, ps0, bootn, irq, debug);
+    common_hal_bno080i2c_BNO080I2C_construct(self, i2c, addr, debug);
     if (debug) {
         mp_printf(&mp_plat_print, "Constructed bno080i2c_BNO080I2C\n");
     }
