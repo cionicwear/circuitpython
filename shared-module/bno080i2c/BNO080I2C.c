@@ -73,36 +73,36 @@ STATIC void bno080i2c_post_response(bno080i2c_BNO080I2C_obj_t *self, uint8_t res
 //     self->resp = 0;
 // }
 
-STATIC int bno080i2c_txrx(bno080i2c_BNO080I2C_obj_t *self, uint8_t *txbuf, uint8_t *rxbuf, int txlen, int rxlen)
-{
-    if (rxlen <= 0 && txlen <= 0) {
-        mp_printf(&mp_plat_print, "BNO called with nothing to do\n");
-        return rxlen;
-    }
+// STATIC int bno080i2c_txrx(bno080i2c_BNO080I2C_obj_t *self, uint8_t *txbuf, uint8_t *rxbuf, int txlen, int rxlen)
+// {
+//     if (rxlen <= 0 && txlen <= 0) {
+//         mp_printf(&mp_plat_print, "BNO called with nothing to do\n");
+//         return rxlen;
+//     }
 
-    if (rxlen > BNO080_MAX_RX- 4) {
-        mp_printf(&mp_plat_print, "BNO requested len %d max %d\n", rxlen, (BNO080_MAX_RX- 4));
-        rxlen = BNO080_MAX_RX- 4;
-    }
+//     if (rxlen > BNO080_MAX_RX- 4) {
+//         mp_printf(&mp_plat_print, "BNO requested len %d max %d\n", rxlen, (BNO080_MAX_RX- 4));
+//         rxlen = BNO080_MAX_RX- 4;
+//     }
 
-    int len = MAX(txlen, rxlen);
+//     int len = MAX(txlen, rxlen);
 
-    // prepare the tx buffer
-    // should be any outgoing transaction
-    // plus zero padding to the size of rx
-    //
-    uint8_t tx[len];
-    bzero(tx, sizeof(tx));
-    if (txlen > 0) {
-        memcpy(tx, txbuf, txlen);
-    }
+//     // prepare the tx buffer
+//     // should be any outgoing transaction
+//     // plus zero padding to the size of rx
+//     //
+//     uint8_t tx[len];
+//     bzero(tx, sizeof(tx));
+//     if (txlen > 0) {
+//         memcpy(tx, txbuf, txlen);
+//     }
 
-    // Read and write len bytes
-    // common_hal_busio_i2c_read(self->bus, self->addr, rxbuf, rxlen);
-    common_hal_busio_i2c_write_read(self->bus, self->addr, txbuf, txlen, rxbuf, rxlen);
+//     // Read and write len bytes
+//     // common_hal_busio_i2c_read(self->bus, self->addr, rxbuf, rxlen);
+//     common_hal_busio_i2c_write_read(self->bus, self->addr, txbuf, txlen, rxbuf, rxlen);
     
-    return rxlen;
-}
+//     return rxlen;
+// }
 
 /**
  * Send a data packet to the sensor
@@ -134,7 +134,7 @@ STATIC int bno080i2c_send(bno080i2c_BNO080I2C_obj_t *self, uint8_t channel, cons
     memcpy(txbuf+4, buf, len);
     self->txlen += len+4;
 
-    // common_hal_busio_i2c_write(self->bus, self->addr, txbuf, self->txlen);
+    common_hal_busio_i2c_write(self->bus, self->addr, txbuf, self->txlen);
 
     // common_hal_digitalio_digitalinout_set_value(&self->ps0, false);
     unlock_bus(self);
@@ -694,6 +694,24 @@ STATIC int bno080i2c_on_read(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestam
 
     return 0;
 }
+STATIC int bno080i2c_recv(bno080i2c_BNO080I2C_obj_t *self, uint8_t *buf, int len)
+{
+    if (len <= 0) {
+        mp_printf(&mp_plat_print, "BNO called with nothing to do\n");
+        return len;
+    }
+
+    if (len > BNO080_MAX_RX- 4) {
+        mp_printf(&mp_plat_print, "BNO requested len %d max %d\n", len, (BNO080_MAX_RX- 4));
+        len = BNO080_MAX_RX- 4;
+    }
+
+    // Read and write len bytes
+    common_hal_busio_i2c_read(self->bus, self->addr, buf, len);
+    
+    return len;
+}
+
 STATIC int bno080i2c_txrx_i2c(bno080i2c_BNO080I2C_obj_t *self, uint8_t **outbuf)
 {
     lock_bus(self);                          
@@ -706,12 +724,13 @@ STATIC int bno080i2c_txrx_i2c(bno080i2c_BNO080I2C_obj_t *self, uint8_t **outbuf)
     if (self->debug) {
         mp_printf(&mp_plat_print, "transact headers\n");
     }
-    uint8_t *hobuf = self->txbuf;
+    // uint8_t *hobuf = self->txbuf;
     uint8_t *hibuf = self->rxbuf;
-    int holen = (txlen>=4) ? 4 : 0;
+    // int holen = (txlen>=4) ? 4 : 0;
     // mp_printf(&mp_plat_print, "holen %d\n", holen);
     int hilen = 4;
-    hilen = bno080i2c_txrx(self, hobuf, hibuf, holen, hilen);
+    // hilen = bno080i2c_txrx(self, hobuf, hibuf, holen, hilen);
+    hilen = bno080i2c_recv(self, hibuf, hilen);
 
     // figure out the size of the receive
     rxlen = READ_LE(uint16_t, hibuf);
@@ -726,14 +745,14 @@ STATIC int bno080i2c_txrx_i2c(bno080i2c_BNO080I2C_obj_t *self, uint8_t **outbuf)
         mp_printf(&mp_plat_print, "rxlen %d\n", rxlen);
     }
     // transact payloads
-    uint8_t *pobuf = self->txbuf + 4;
+    // uint8_t *pobuf = self->txbuf + 4;
     uint8_t *pibuf = self->rxbuf + 4;
 
     // let these possibly be negative, for correct return value
-    int polen = txlen - 4;
+    // int polen = txlen - 4;
     int pilen = rxlen - 4;
-
-    pilen = bno080i2c_txrx(self, pobuf, pibuf, polen, pilen);
+    // pilen = bno080i2c_txrx(self, pobuf, pibuf, polen, pilen);
+    pilen = bno080i2c_recv(self, pibuf, pilen);
 
     *outbuf = self->rxbuf;
 
@@ -773,7 +792,7 @@ STATIC int bno080i2c_sample(bno080i2c_BNO080I2C_obj_t *self)
 
     uint8_t channel = buf[2];
     uint8_t seqnum = buf[3];
-    uint8_t expectedseq = self->read_seqnums[channel]+1;
+    uint8_t expectedseq = self->read_seqnums[channel]+2;
     if (seqnum != expectedseq) {
         // DISABLED ONLY FOR FES BUILD - PLEASE REENABLE
         // LOG(ERROR, "[channel %d] expected seq %d, got %d", channel, expectedseq, seqnum);
