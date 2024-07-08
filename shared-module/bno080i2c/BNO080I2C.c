@@ -274,7 +274,7 @@ STATIC int bno080i2c_frs_save_index(bno080i2c_frs_t *frs)
     return ENOMEM;
 }
 
-STATIC void bno080i2c_sample_frs(bno080i2c_BNO080I2C_obj_t *self, const uint8_t *buf, int len)
+STATIC void bno080i2c_read_frs(bno080i2c_BNO080I2C_obj_t *self, const uint8_t *buf, int len)
 {
     uint8_t length_status = READ_LE(uint8_t, buf+1);
     uint8_t status = length_status & 0x0F;
@@ -426,7 +426,7 @@ STATIC void bno080i2c_control(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timesta
     uint8_t control_id = buf[0];
     switch (control_id) {
     case BNO080_FRS_READ_RESP:
-        bno080i2c_sample_frs(self, buf, len);
+        bno080i2c_read_frs(self, buf, len);
         break;
     case BNO080_FRS_WRITE_RESP:
         bno080i2c_write_frs(self, buf, len);
@@ -718,7 +718,7 @@ STATIC int bno080i2c_txrx_i2c(bno080i2c_BNO080I2C_obj_t *self, uint8_t **outbuf)
     // common_hal_digitalio_digitalinout_set_value(&self->ps0, true);
 
     int rxlen = 0;              // read from incoming header
-    int txlen = self->txbuf[0];  // size of outgoing transaction
+    // int txlen = self->txbuf[0];  // size of outgoing transaction
 
     // transact headers - 4 bytes each
     if (self->debug) {
@@ -757,11 +757,11 @@ STATIC int bno080i2c_txrx_i2c(bno080i2c_BNO080I2C_obj_t *self, uint8_t **outbuf)
     *outbuf = self->rxbuf;
 
     // shift the transaction queue
-    if (txlen > 0) {
-        self->txlen -= txlen;
-        memmove(self->txbuf, &self->txbuf[txlen], self->txlen);
-        memset(&self->txbuf[self->txlen], 0, txlen);
-    }
+    // if (txlen > 0) {
+    //     self->txlen -= txlen;
+    //     memmove(self->txbuf, &self->txbuf[txlen], self->txlen);
+    //     memset(&self->txbuf[self->txlen], 0, txlen);
+    // }
 
     unlock_bus(self);
 
@@ -794,6 +794,7 @@ STATIC int bno080i2c_sample(bno080i2c_BNO080I2C_obj_t *self)
     uint8_t seqnum = buf[3];
     uint8_t expectedseq = self->read_seqnums[channel]+2;
     if (seqnum != expectedseq) {
+        mp_printf(&mp_plat_print, "expected seq %d, got %d\n", expectedseq, seqnum);
         // DISABLED ONLY FOR FES BUILD - PLEASE REENABLE
         // LOG(ERROR, "[channel %d] expected seq %d, got %d", channel, expectedseq, seqnum);
     }
@@ -802,7 +803,7 @@ STATIC int bno080i2c_sample(bno080i2c_BNO080I2C_obj_t *self)
     return bno080i2c_on_read(self, timestamp, buf, len);
 }
 
-STATIC int bno080i2c_sample_pid(bno080i2c_BNO080I2C_obj_t *self)
+STATIC int bno080i2c_read_pid(bno080i2c_BNO080I2C_obj_t *self)
 {
     const uint8_t command[] = {
         BNO080_PRODUCT_ID_REQUEST,  
@@ -810,7 +811,7 @@ STATIC int bno080i2c_sample_pid(bno080i2c_BNO080I2C_obj_t *self)
     };
     
     bno080i2c_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
-    bno080i2c_sample(self);
+    // bno080i2c_sample(self);
 
     // bno080i2c_wait_for_response(self, BNO080_PRODUCT_ID_RESPONSE);
     return 0;
@@ -867,17 +868,17 @@ void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, b
     }
     common_hal_bno080i2c_BNO080I2C_soft_reset(self);
 
-    bno080i2c_sample_pid(self);
+    bno080i2c_read_pid(self);
 
     // check pid.id 3 times before OSError
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 6; i++) {
         mp_printf(&mp_plat_print, "Checking for BNO080 PID\n");
         mp_handle_pending(true);
         bno080i2c_sample(self);
         if (self->pid.id == BNO080_PRODUCT_ID_RESPONSE) {
             break;
         }
-        if (i == 2) {
+        if (i == 5) {
             mp_raise_OSError(ENODEV);
         }
         mp_hal_delay_ms(500);
@@ -892,22 +893,23 @@ void common_hal_bno080i2c_BNO080I2C_soft_reset(bno080i2c_BNO080I2C_obj_t *self) 
         mp_printf(&mp_plat_print, "hal soft reset called\n");
     }
     // uint8_t command[1] = {1};
-    uint8_t command[] = {
-        BNO080_COMMAND_REQ,
-        self->write_seqnums[BNO080_CHANNEL_CONTROL],
-        BNO080_COMMAND_DCD_CLEAR,
-    };
+    uint8_t command[1] = { 0x01 };
+    // uint8_t command[] = {
+    //     BNO080_COMMAND_REQ,
+    //     self->write_seqnums[BNO080_CHANNEL_CONTROL],
+    //     BNO080_COMMAND_DCD_CLEAR,
+    // };
 
     bno080i2c_send(self, BNO080_CHANNEL_EXECUTE, command, sizeof(command));
-    bno080i2c_sample(self);
+    // bno080i2c_sample(self);
     mp_hal_delay_ms(500);
 
     bno080i2c_send(self, BNO080_CHANNEL_EXECUTE, command, sizeof(command));
-    bno080i2c_sample(self);
+    // bno080i2c_sample(self);
     mp_hal_delay_ms(500);
 
     // clear seqnums
-    memset(self->read_seqnums, 0xff, sizeof(self->read_seqnums));
+    memset(self->read_seqnums, 0xfe, sizeof(self->read_seqnums)); // 0xff is -1, -2 is 0xfe
     memset(self->write_seqnums, 0x00, sizeof(self->write_seqnums));
 
     for (int i = 0; i < 3; i++) {
