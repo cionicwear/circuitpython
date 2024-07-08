@@ -41,7 +41,7 @@
 
 #define BNO_BAUDRATE    (1000000)
 
-STATIC int bno080i2c_txrx_i2c(bno080i2c_BNO080I2C_obj_t *self, uint8_t **outbuf);
+// STATIC int bno080i2c_txrx_i2c(bno080i2c_BNO080I2C_obj_t *self, uint8_t **outbuf);
 
 
 STATIC void lock_bus(bno080i2c_BNO080I2C_obj_t *self) {
@@ -712,61 +712,61 @@ STATIC int bno080i2c_recv(bno080i2c_BNO080I2C_obj_t *self, uint8_t *buf, int len
     return len;
 }
 
-STATIC int bno080i2c_txrx_i2c(bno080i2c_BNO080I2C_obj_t *self, uint8_t **outbuf)
-{
-    lock_bus(self);                          
-    // common_hal_digitalio_digitalinout_set_value(&self->ps0, true);
+// STATIC int bno080i2c_txrx_i2c(bno080i2c_BNO080I2C_obj_t *self, uint8_t **outbuf)
+// {
+//     lock_bus(self);                          
+//     // common_hal_digitalio_digitalinout_set_value(&self->ps0, true);
 
-    int rxlen = 0;              // read from incoming header
-    // int txlen = self->txbuf[0];  // size of outgoing transaction
+//     int rxlen = 0;              // read from incoming header
+//     // int txlen = self->txbuf[0];  // size of outgoing transaction
 
-    // transact headers - 4 bytes each
-    if (self->debug) {
-        mp_printf(&mp_plat_print, "transact headers\n");
-    }
-    // uint8_t *hobuf = self->txbuf;
-    uint8_t *hibuf = self->rxbuf;
-    // int holen = (txlen>=4) ? 4 : 0;
-    // mp_printf(&mp_plat_print, "holen %d\n", holen);
-    int hilen = 4;
-    // hilen = bno080i2c_txrx(self, hobuf, hibuf, holen, hilen);
-    hilen = bno080i2c_recv(self, hibuf, hilen);
+//     // transact headers - 4 bytes each
+//     // if (self->debug) {
+//     //     mp_printf(&mp_plat_print, "transact headers\n");
+//     // }
+//     // uint8_t *hobuf = self->txbuf;
+//     uint8_t *hibuf = self->rxbuf;
+//     // int holen = (txlen>=4) ? 4 : 0;
+//     // mp_printf(&mp_plat_print, "holen %d\n", holen);
+//     int hilen = 4;
+//     // hilen = bno080i2c_txrx(self, hobuf, hibuf, holen, hilen);
+//     hilen = bno080i2c_recv(self, hibuf, hilen);
 
-    // figure out the size of the receive
-    rxlen = READ_LE(uint16_t, hibuf);
-    if (rxlen == 0xffff) {  // nothing to receive
-        mp_printf(&mp_plat_print, "rxlen 0xffff (nothing to receive)\n");
-        rxlen = 0;
-    } else if (rxlen & 0x8000) { // msb == continuation
-        rxlen &= 0x7fff;
-    }
+//     // figure out the size of the receive
+//     rxlen = READ_LE(uint16_t, hibuf);
+//     if (rxlen == 0xffff) {  // nothing to receive
+//         mp_printf(&mp_plat_print, "rxlen 0xffff (nothing to receive)\n");
+//         rxlen = 0;
+//     } else if (rxlen & 0x8000) { // msb == continuation
+//         rxlen &= 0x7fff;
+//     }
 
-    if (self->debug) {
-        mp_printf(&mp_plat_print, "rxlen %d\n", rxlen);
-    }
-    // transact payloads
-    // uint8_t *pobuf = self->txbuf + 4;
-    uint8_t *pibuf = self->rxbuf + 4;
+//     if (self->debug) {
+//         mp_printf(&mp_plat_print, "rxlen %d\n", rxlen);
+//     }
+//     // transact payloads
+//     // uint8_t *pobuf = self->txbuf + 4;
+//     uint8_t *pibuf = self->rxbuf + 4;
 
-    // let these possibly be negative, for correct return value
-    // int polen = txlen - 4;
-    int pilen = rxlen - 4;
-    // pilen = bno080i2c_txrx(self, pobuf, pibuf, polen, pilen);
-    pilen = bno080i2c_recv(self, pibuf, pilen);
+//     // let these possibly be negative, for correct return value
+//     // int polen = txlen - 4;
+//     int pilen = rxlen - 4;
+//     // pilen = bno080i2c_txrx(self, pobuf, pibuf, polen, pilen);
+//     pilen = bno080i2c_recv(self, pibuf, pilen);
 
-    *outbuf = self->rxbuf;
+//     *outbuf = self->rxbuf;
 
-    // shift the transaction queue
-    // if (txlen > 0) {
-    //     self->txlen -= txlen;
-    //     memmove(self->txbuf, &self->txbuf[txlen], self->txlen);
-    //     memset(&self->txbuf[self->txlen], 0, txlen);
-    // }
+//     // shift the transaction queue
+//     // if (txlen > 0) {
+//     //     self->txlen -= txlen;
+//     //     memmove(self->txbuf, &self->txbuf[txlen], self->txlen);
+//     //     memset(&self->txbuf[self->txlen], 0, txlen);
+//     // }
 
-    unlock_bus(self);
+//     unlock_bus(self);
 
-    return hilen+pilen;
-}
+//     return hilen+pilen;
+// }
 
 STATIC int bno080i2c_sample(bno080i2c_BNO080I2C_obj_t *self)
 {
@@ -778,7 +778,10 @@ STATIC int bno080i2c_sample(bno080i2c_BNO080I2C_obj_t *self)
 
     // the resultant buffer points to bno->rxbuf and is not locked after this call
     uint8_t *buf = NULL;
-    int len = bno080i2c_txrx_i2c(self, &buf);
+    buf = self->rxbuf;
+    int len = bno080i2c_recv(self, buf, BNO080_MAX_RX);
+    // int len = bno080i2c_txrx_i2c(self, &buf);
+    len = READ_LE(uint16_t, buf);
 
     if (len == 0) { // SHTP 2.3.1  no cargo
         return 0;
@@ -810,22 +813,6 @@ STATIC int bno080i2c_read_pid(bno080i2c_BNO080I2C_obj_t *self)
     const uint8_t command[] = {
         BNO080_PRODUCT_ID_REQUEST,  
         0,                          // Reserved
-    };
-    
-    bno080i2c_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
-    // bno080i2c_sample(self);
-
-    // bno080i2c_wait_for_response(self, BNO080_PRODUCT_ID_RESPONSE);
-    return 0;
-}
-
-STATIC int bno080i2c_reinit(bno080i2c_BNO080I2C_obj_t *self)
-{
-    const uint8_t command[] = {
-        BNO080_COMMAND_REQ,
-        self->write_seqnums[BNO080_CHANNEL_CONTROL],
-        BNO080_COMMAND_INITIALIZE, 
-        0x01,                // Initialize whole sensor hub
     };
     
     bno080i2c_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
@@ -904,7 +891,7 @@ void common_hal_bno080i2c_BNO080I2C_soft_reset(bno080i2c_BNO080I2C_obj_t *self) 
     //     BNO080_COMMAND_DCD_CLEAR,
     // };
 
-    // bno080i2c_send(self, BNO080_CHANNEL_EXECUTE, command, sizeof(command));
+    bno080i2c_send(self, BNO080_CHANNEL_EXECUTE, command, sizeof(command));
     // bno080i2c_sample(self);
     mp_hal_delay_ms(500);
 
@@ -922,20 +909,7 @@ void common_hal_bno080i2c_BNO080I2C_soft_reset(bno080i2c_BNO080I2C_obj_t *self) 
         }
         mp_handle_pending(true);
         bno080i2c_sample(self);
-        mp_hal_delay_ms(250);
-    }
-    
-    bno080i2c_reinit(self);
-    bno080i2c_send(self, BNO080_CHANNEL_EXECUTE, command, sizeof(command));
-    // bno080i2c_sample(self);
-    mp_hal_delay_ms(500);
-    for (int i = 0; i < 3; i++) {
-        if (self->debug) {
-            mp_printf(&mp_plat_print, "Waiting for reinit to complete\n");
-        }
-        mp_handle_pending(true);
-        bno080i2c_sample(self);
-        mp_hal_delay_ms(250);
+        mp_hal_delay_ms(500); // should get INIT_COMPLETE by this point
     }
 
     if (self->debug) {
