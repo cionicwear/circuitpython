@@ -28,6 +28,7 @@
 #include "shared-bindings/busio/I2C.h"
 #include "shared-module/bno080i2c/BNO080I2C.h"
 #include "lib/cionic/orientation.h"
+#include "lib/cionic/ringbuf.h"
 
 #include "shared-bindings/microcontroller/__init__.h"
 #include "shared-bindings/time/__init__.h"
@@ -40,9 +41,6 @@
 #include "py/stream.h"
 
 #define BNO_BAUDRATE    (1000000)
-
-// STATIC int bno080i2c_txrx_i2c(bno080i2c_BNO080I2C_obj_t *self, uint8_t **outbuf);
-
 
 STATIC void lock_bus(bno080i2c_BNO080I2C_obj_t *self) {
     if (!common_hal_busio_i2c_try_lock(self->bus)) {
@@ -59,50 +57,6 @@ STATIC void bno080i2c_post_response(bno080i2c_BNO080I2C_obj_t *self, uint8_t res
 {
     self->resp = response_id;
 }
-
-// STATIC void bno080i2c_wait_for_response(bno080i2c_BNO080I2C_obj_t *self, uint8_t response_id)
-// {
-//     while(self->resp != response_id){
-//         mp_handle_pending(true);
-//         // Allow user to break out of a timeout with a KeyboardInterrupt.
-//         if (mp_hal_is_interrupted()) {
-//             return;
-//         }
-//     }
-
-//     self->resp = 0;
-// }
-
-// STATIC int bno080i2c_txrx(bno080i2c_BNO080I2C_obj_t *self, uint8_t *txbuf, uint8_t *rxbuf, int txlen, int rxlen)
-// {
-//     if (rxlen <= 0 && txlen <= 0) {
-//         mp_printf(&mp_plat_print, "BNO called with nothing to do\n");
-//         return rxlen;
-//     }
-
-//     if (rxlen > BNO080_MAX_RX- 4) {
-//         mp_printf(&mp_plat_print, "BNO requested len %d max %d\n", rxlen, (BNO080_MAX_RX- 4));
-//         rxlen = BNO080_MAX_RX- 4;
-//     }
-
-//     int len = MAX(txlen, rxlen);
-
-//     // prepare the tx buffer
-//     // should be any outgoing transaction
-//     // plus zero padding to the size of rx
-//     //
-//     uint8_t tx[len];
-//     bzero(tx, sizeof(tx));
-//     if (txlen > 0) {
-//         memcpy(tx, txbuf, txlen);
-//     }
-
-//     // Read and write len bytes
-//     // common_hal_busio_i2c_read(self->bus, self->addr, rxbuf, rxlen);
-//     common_hal_busio_i2c_write_read(self->bus, self->addr, txbuf, txlen, rxbuf, rxlen);
-    
-//     return rxlen;
-// }
 
 /**
  * Send a data packet to the sensor
@@ -134,9 +88,11 @@ STATIC int bno080i2c_send(bno080i2c_BNO080I2C_obj_t *self, uint8_t channel, cons
     memcpy(txbuf+4, buf, len);
     self->txlen += len+4;
 
+    // print time before write
+    mp_printf(&mp_plat_print, "before write: %d\n", mp_hal_ticks_ms());
     common_hal_busio_i2c_write(self->bus, self->addr, txbuf, self->txlen);
+    mp_printf(&mp_plat_print, "after write: %d\n", mp_hal_ticks_ms());
 
-    // common_hal_digitalio_digitalinout_set_value(&self->ps0, false);
     unlock_bus(self);
     return 0;
 }
@@ -482,6 +438,8 @@ STATIC void bno080i2c_report_rotation(bno080i2c_BNO080I2C_obj_t *self, elapsed_t
     self->fquat[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale);  // j
     self->fquat[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale);  // k
     self->fquat[3] = mp_obj_new_float(READ_LE(int16_t, &pkt[10])*scale);  // real
+
+    mp_printf(&mp_plat_print, "updated quat\n");
 }
 
 STATIC void bno080i2c_report_accel(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
@@ -507,6 +465,8 @@ STATIC void bno080i2c_report_accel(bno080i2c_BNO080I2C_obj_t *self, elapsed_t ti
     self->accel[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
     self->accel[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
     self->accel[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+
+    mp_printf(&mp_plat_print, "updated accel\n");
 }
 
 STATIC void bno080i2c_report_gyroscope(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int lens)
@@ -531,6 +491,8 @@ STATIC void bno080i2c_report_gyroscope(bno080i2c_BNO080I2C_obj_t *self, elapsed_
     self->gyro[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
     self->gyro[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
     self->gyro[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+
+    mp_printf(&mp_plat_print, "updated gyro\n");
 }
 
 STATIC void bno080i2c_report_magnetic_field(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
@@ -595,8 +557,10 @@ STATIC void bno080i2c_report(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestam
         mp_printf(&mp_plat_print, "no timestamp found\n");
         return;
     }
-
     uint8_t report_id = buf[BNO080_SRID_OFFSET];
+
+    self->last_report = report_id;
+
     switch (report_id) {
     // rotation vectors all with Q point 14
     case BNO080_SRID_ARVR_GAME_ROTATION_VECTOR:
@@ -642,10 +606,10 @@ STATIC int bno080i2c_on_read(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestam
             // currently all sensor reports must start with base timestamp reference
             // if we implement batching this will no longer be true
             // and we will need to handle the channel report seperate from sensor report
-            if(buf[BNO080_HEADER_SIZE] != BNO080_BASE_TIMESTAMP){
-                mp_printf(&mp_plat_print, "BNO080_HEADER_SIZE != BNO080_BASE_TIMESTAMP\n");
-                return EINVAL;
-            }
+            // if(buf[BNO080_HEADER_SIZE] != BNO080_BASE_TIMESTAMP){
+            //     mp_printf(&mp_plat_print, "BNO080_HEADER_SIZE != BNO080_BASE_TIMESTAMP\n");
+            //     return EINVAL;
+            // }
 
             // 7.2.1 Base Timestamp Reference (0xFB)
             // relative to transport-defined reference point. Signed. Units are 100 microsecond ticks.
@@ -701,72 +665,28 @@ STATIC int bno080i2c_recv(bno080i2c_BNO080I2C_obj_t *self, uint8_t *buf, int len
         return len;
     }
 
-    if (len > BNO080_MAX_RX- 4) {
-        mp_printf(&mp_plat_print, "BNO requested len %d max %d\n", len, (BNO080_MAX_RX- 4));
-        len = BNO080_MAX_RX- 4;
+    if (len > BNO080_MAX_RX) {
+        mp_printf(&mp_plat_print, "BNO requested len %d max %d\n", len, (BNO080_MAX_RX));
+        len = BNO080_MAX_RX;
     }
 
     // Read and write len bytes
-    common_hal_busio_i2c_read(self->bus, self->addr, buf, len);
+    // print time before transfer
+    mp_printf(&mp_plat_print, "before i2c read: %d\n", mp_hal_ticks_ms());
+    common_hal_busio_i2c_read(self->bus, self->addr, buf, 4);
+
+    uint16_t rxlen = READ_LE(uint16_t, buf);
+    if (rxlen > BNO080_MAX_RX) {
+        mp_printf(&mp_plat_print, "BNO requested len %d max %d\n", rxlen, (BNO080_MAX_RX));
+        rxlen = BNO080_MAX_RX;
+    }
+
+    common_hal_busio_i2c_read(self->bus, self->addr, buf, rxlen);
+    mp_printf(&mp_plat_print, "after i2c read: %d\n", mp_hal_ticks_ms());
+ 
     
-    return len;
+    return rxlen;
 }
-
-// STATIC int bno080i2c_txrx_i2c(bno080i2c_BNO080I2C_obj_t *self, uint8_t **outbuf)
-// {
-//     lock_bus(self);                          
-//     // common_hal_digitalio_digitalinout_set_value(&self->ps0, true);
-
-//     int rxlen = 0;              // read from incoming header
-//     // int txlen = self->txbuf[0];  // size of outgoing transaction
-
-//     // transact headers - 4 bytes each
-//     // if (self->debug) {
-//     //     mp_printf(&mp_plat_print, "transact headers\n");
-//     // }
-//     // uint8_t *hobuf = self->txbuf;
-//     uint8_t *hibuf = self->rxbuf;
-//     // int holen = (txlen>=4) ? 4 : 0;
-//     // mp_printf(&mp_plat_print, "holen %d\n", holen);
-//     int hilen = 4;
-//     // hilen = bno080i2c_txrx(self, hobuf, hibuf, holen, hilen);
-//     hilen = bno080i2c_recv(self, hibuf, hilen);
-
-//     // figure out the size of the receive
-//     rxlen = READ_LE(uint16_t, hibuf);
-//     if (rxlen == 0xffff) {  // nothing to receive
-//         mp_printf(&mp_plat_print, "rxlen 0xffff (nothing to receive)\n");
-//         rxlen = 0;
-//     } else if (rxlen & 0x8000) { // msb == continuation
-//         rxlen &= 0x7fff;
-//     }
-
-//     if (self->debug) {
-//         mp_printf(&mp_plat_print, "rxlen %d\n", rxlen);
-//     }
-//     // transact payloads
-//     // uint8_t *pobuf = self->txbuf + 4;
-//     uint8_t *pibuf = self->rxbuf + 4;
-
-//     // let these possibly be negative, for correct return value
-//     // int polen = txlen - 4;
-//     int pilen = rxlen - 4;
-//     // pilen = bno080i2c_txrx(self, pobuf, pibuf, polen, pilen);
-//     pilen = bno080i2c_recv(self, pibuf, pilen);
-
-//     *outbuf = self->rxbuf;
-
-//     // shift the transaction queue
-//     // if (txlen > 0) {
-//     //     self->txlen -= txlen;
-//     //     memmove(self->txbuf, &self->txbuf[txlen], self->txlen);
-//     //     memset(&self->txbuf[self->txlen], 0, txlen);
-//     // }
-
-//     unlock_bus(self);
-
-//     return hilen+pilen;
-// }
 
 STATIC int bno080i2c_sample(bno080i2c_BNO080I2C_obj_t *self)
 {
@@ -793,7 +713,7 @@ STATIC int bno080i2c_sample(bno080i2c_BNO080I2C_obj_t *self)
         return -1;
     }
 
-    mp_printf(&mp_plat_print, "rx: channel %d seqnum %d len %d\n", buf[2], buf[3], len);
+    // mp_printf(&mp_plat_print, "rx: channel %d seqnum %d len %d\n", buf[2], buf[3], len);
 
     uint8_t channel = buf[2];
     uint8_t seqnum = buf[3];
@@ -816,31 +736,8 @@ STATIC int bno080i2c_read_pid(bno080i2c_BNO080I2C_obj_t *self)
     };
     
     bno080i2c_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
-    // bno080i2c_sample(self);
-
-    // bno080i2c_wait_for_response(self, BNO080_PRODUCT_ID_RESPONSE);
     return 0;
 }
-
-// STATIC void bno080i2c_isr_recv(void *arg) {
-//     bno080i2c_BNO080I2C_obj_t *self = (bno080i2c_BNO080I2C_obj_t *)arg;
-
-//     // print the bno object's txbuf and rxbuf
-//     mp_printf(&mp_plat_print, "bno080i2c_isr_recv\n");
-//     mp_printf(&mp_plat_print, "txbuf: ");
-//     for(unsigned int i = 0; i < sizeof(self->txbuf); i++){
-//         mp_printf(&mp_plat_print, "%x ", self->txbuf[i]);
-//     }
-//     mp_printf(&mp_plat_print, "\n");
-
-//     mp_printf(&mp_plat_print, "rxbuf: ");
-//     for(unsigned int i = 0; i < sizeof(self->rxbuf); i++){
-//         mp_printf(&mp_plat_print, "%x ", self->rxbuf[i]);
-//     }
-//     mp_printf(&mp_plat_print, "\n");
-
-//     bno080i2c_i2c_sample(self);
-// }
 
 void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, busio_i2c_obj_t *bus, const int8_t addr, bool debug) { 
     // print that construct is being called
@@ -854,6 +751,11 @@ void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, b
     self->addr = addr;
     self->debug = debug;
     self->calibration_complete = false;
+    
+    // self->quat_buf = NULL;
+    // self->accel_buf = NULL;
+    // self->gyro_buf = NULL;
+    // self->time_buf = cionic_ringbuf_alloc(sizeof(elapsed_t), BNO080_DATABUF_SIZE);
 
     if (self->debug) {
         mp_printf(&mp_plat_print, "Soft resetting...\n");
@@ -863,20 +765,21 @@ void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, b
     bno080i2c_read_pid(self);
 
     // check pid.id 3 times before OSError
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < 3; i++) {
         mp_printf(&mp_plat_print, "Checking for BNO080 PID\n");
         mp_handle_pending(true);
         bno080i2c_sample(self);
         if (self->pid.id == BNO080_PRODUCT_ID_RESPONSE) {
             break;
         }
-        if (i == 5) {
+        if (i == 2) {
             mp_raise_OSError(ENODEV);
         }
         mp_hal_delay_ms(250);
     }
     
     mp_printf(&mp_plat_print, "BNO id=%x found\n", self->pid.id);
+
     return;
 }
 
@@ -885,12 +788,6 @@ void common_hal_bno080i2c_BNO080I2C_soft_reset(bno080i2c_BNO080I2C_obj_t *self) 
         mp_printf(&mp_plat_print, "hal soft reset called\n");
     }
     uint8_t command[1] = { 0x01 };
-    // uint8_t command[] = {
-    //     BNO080_COMMAND_REQ,
-    //     self->write_seqnums[BNO080_CHANNEL_CONTROL],
-    //     BNO080_COMMAND_DCD_CLEAR,
-    // };
-
     bno080i2c_send(self, BNO080_CHANNEL_EXECUTE, command, sizeof(command));
     // bno080i2c_sample(self);
     mp_hal_delay_ms(500);
@@ -974,15 +871,32 @@ int common_hal_bno080i2c_BNO080I2C_set_feature(bno080i2c_BNO080I2C_obj_t *self, 
     return rc;
 }
 
+// void common_hal_bno080i2c_BNO080I2C_start(bno080i2c_BNO080I2C_obj_t *self, uint32_t interval) {
+//     self->sampling = true;
+//     while (self->sampling) {
+//         bno080i2c_sample(self);
+//         mp_hal_delay_ms(interval);
+//     }
+// }
+
+// void common_hal_bno080i2c_BNO080I2C_stop(bno080i2c_BNO080I2C_obj_t *self) {
+//     self->sampling = false;
+// }
+
 mp_obj_t common_hal_bno080i2c_BNO080I2C_read(bno080i2c_BNO080I2C_obj_t *self, uint8_t report_id) {
     // mp_obj_t fquat[QUAT_DIMENSION];
     // int rc = 0;
 
-    // sample
-    bno080i2c_sample(self);
-    
-    // print that read is being called
-    mp_printf(&mp_plat_print, "hal read called\n");
+    // mp_printf(&mp_plat_print, "time before sample: %d\n", mp_hal_ticks_ms());
+    // sample until report is updated (max 10)
+    for (int i = 0; i < 10; i++) {
+        bno080i2c_sample(self);
+        if (self->last_report == report_id) {
+            break;
+        }
+    }
+
+    // mp_printf(&mp_plat_print, "time after sample: %d\n", mp_hal_ticks_ms());
 
     switch(report_id){
         case BNO080_SRID_ARVR_GAME_ROTATION_VECTOR:
@@ -1008,15 +922,12 @@ void common_hal_bno080i2c_BNO080I2C_deinit(bno080i2c_BNO080I2C_obj_t *self) {
     // print that deinit is being called
     mp_printf(&mp_plat_print, "hal deinit called\n");
 
-    if (!self->bus) {
+    if (!self->bus || !self->addr) {
         return;
     }
     
     self->bus = 0;
+    self->addr = 0;
 
-    // common_hal_digitalio_digitalinout_deinit(&self->rst);
-    // common_hal_digitalio_digitalinout_deinit(&self->ps0);
-    // common_hal_digitalio_digitalinout_deinit(&self->bootn);
-    // common_hal_digitalio_digitalinout_deinit(&self->irq);
     return;
 }

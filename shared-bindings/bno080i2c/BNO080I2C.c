@@ -181,6 +181,22 @@ STATIC mp_obj_t bno080i2c_BNO080I2C_set_feature(size_t n_args, const mp_obj_t *p
 }
 MP_DEFINE_CONST_FUN_OBJ_KW(bno080i2c_bno080i2c_set_feature_obj, 1, bno080i2c_BNO080I2C_set_feature);
 
+// STATIC mp_obj_t bno080i2c_bno080i2c_start(mp_obj_t self_in, mp_obj_t interval) {
+//     bno080i2c_BNO080I2C_obj_t *self = (bno080i2c_BNO080I2C_obj_t *)self_in;
+
+//     common_hal_bno080i2c_BNO080I2C_start(self, mp_obj_get_int(interval));
+
+//     return mp_const_none;
+// }
+// MP_DEFINE_CONST_FUN_OBJ_2(bno080i2c_bno080i2c_start_obj, bno080i2c_bno080i2c_start);
+
+// STATIC mp_obj_t bno080i2c_bno080i2c_stop(mp_obj_t self_in) {
+//     bno080i2c_BNO080I2C_obj_t *self = (bno080i2c_BNO080I2C_obj_t *)self_in;
+//     common_hal_bno080i2c_BNO080I2C_stop(self);
+
+//     return mp_const_none;
+// }
+// MP_DEFINE_CONST_FUN_OBJ_1(bno080i2c_bno080i2c_stop_obj, bno080i2c_bno080i2c_stop);
 
 STATIC mp_obj_t bno080i2c_bno080i2c_read(mp_obj_t self_in, mp_obj_t id) {
     // print that read is called
