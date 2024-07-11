@@ -89,9 +89,13 @@ STATIC int bno080i2c_send(bno080i2c_BNO080I2C_obj_t *self, uint8_t channel, cons
     self->txlen += len+4;
 
     // print time before write
-    mp_printf(&mp_plat_print, "before write: %d\n", mp_hal_ticks_ms());
+    if (self->debug) {
+        mp_printf(&mp_plat_print, "before write: %d\n", mp_hal_ticks_ms());
+    }
     common_hal_busio_i2c_write(self->bus, self->addr, txbuf, self->txlen);
-    mp_printf(&mp_plat_print, "after write: %d\n", mp_hal_ticks_ms());
+    if (self->debug) {
+        mp_printf(&mp_plat_print, "after write: %d\n", mp_hal_ticks_ms());
+    }
 
     unlock_bus(self);
     return 0;
@@ -111,13 +115,15 @@ STATIC void bno080i2c_pid_response(bno080i2c_BNO080I2C_obj_t *self, elapsed_t ti
     self->pid.sw_build_number = READ_LE(uint32_t, buf+8);
     self->pid.sw_version_patch = READ_LE(uint16_t, buf+12);
 
-    mp_printf(&mp_plat_print, "mpid.id %d\n", self->pid.id);
-    mp_printf(&mp_plat_print, "mpid.reset_cause %d\n", self->pid.reset_cause);
-    mp_printf(&mp_plat_print, "mpid.sw_ver_major.sw_ver_major %d\n", self->pid.sw_ver_major);
-    mp_printf(&mp_plat_print, "mpid.sw_ver_minor.sw_ver_minor %d\n", self->pid.sw_ver_minor);
-    mp_printf(&mp_plat_print, "mpid.sw_part_number %ld\n", self->pid.sw_part_number);
-    mp_printf(&mp_plat_print, "mpid.sw_build_number %ld\n", self->pid.sw_build_number);
-    mp_printf(&mp_plat_print, "mpid.sw_version_patch %d\n", self->pid.sw_version_patch);
+    if (self->debug) {
+        mp_printf(&mp_plat_print, "mpid.id %d\n", self->pid.id);
+        mp_printf(&mp_plat_print, "mpid.reset_cause %d\n", self->pid.reset_cause);
+        mp_printf(&mp_plat_print, "mpid.sw_ver_major.sw_ver_major %d\n", self->pid.sw_ver_major);
+        mp_printf(&mp_plat_print, "mpid.sw_ver_minor.sw_ver_minor %d\n", self->pid.sw_ver_minor);
+        mp_printf(&mp_plat_print, "mpid.sw_part_number %ld\n", self->pid.sw_part_number);
+        mp_printf(&mp_plat_print, "mpid.sw_build_number %ld\n", self->pid.sw_build_number);
+        mp_printf(&mp_plat_print, "mpid.sw_version_patch %d\n", self->pid.sw_version_patch);
+    }
 }
 // From 1000-3927 BNO080 Datasheet Figure 1-31: FRS records
 const uint16_t bno080i2c_frs_ids[] = {
@@ -373,8 +379,10 @@ STATIC void bno080i2c_command_response(bno080i2c_BNO080I2C_obj_t *self, elapsed_
         command = (char *)"UNKNOWN";
         break;
     }
-    
-    mp_printf(&mp_plat_print, "command response %s = %d\n", command, status);   
+
+    if (self->debug) {
+        mp_printf(&mp_plat_print, "command response %s = %d\n", command, status);
+    }
 }
 
 STATIC void bno080i2c_control(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len)
@@ -439,7 +447,9 @@ STATIC void bno080i2c_report_rotation(bno080i2c_BNO080I2C_obj_t *self, elapsed_t
     self->fquat[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale);  // k
     self->fquat[3] = mp_obj_new_float(READ_LE(int16_t, &pkt[10])*scale);  // real
 
-    mp_printf(&mp_plat_print, "updated quat\n");
+    if (self->debug) {
+        mp_printf(&mp_plat_print, "updated quat\n");
+    }
 }
 
 STATIC void bno080i2c_report_accel(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
@@ -466,7 +476,9 @@ STATIC void bno080i2c_report_accel(bno080i2c_BNO080I2C_obj_t *self, elapsed_t ti
     self->accel[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
     self->accel[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
 
-    mp_printf(&mp_plat_print, "updated accel\n");
+    if (self->debug) {
+        mp_printf(&mp_plat_print, "updated accel\n");
+    }
 }
 
 STATIC void bno080i2c_report_gyroscope(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int lens)
@@ -492,7 +504,9 @@ STATIC void bno080i2c_report_gyroscope(bno080i2c_BNO080I2C_obj_t *self, elapsed_
     self->gyro[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
     self->gyro[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
 
-    mp_printf(&mp_plat_print, "updated gyro\n");
+    if (self->debug) {
+        mp_printf(&mp_plat_print, "updated gyro\n");
+    }
 }
 
 STATIC void bno080i2c_report_magnetic_field(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
@@ -672,7 +686,8 @@ STATIC int bno080i2c_recv(bno080i2c_BNO080I2C_obj_t *self, uint8_t *buf, int len
 
     // Read and write len bytes
     // print time before transfer
-    mp_printf(&mp_plat_print, "before i2c read: %d\n", mp_hal_ticks_ms());
+
+    // mp_printf(&mp_plat_print, "before i2c read: %d\n", mp_hal_ticks_ms());
     common_hal_busio_i2c_read(self->bus, self->addr, buf, 4);
 
     uint16_t rxlen = READ_LE(uint16_t, buf);
@@ -682,7 +697,7 @@ STATIC int bno080i2c_recv(bno080i2c_BNO080I2C_obj_t *self, uint8_t *buf, int len
     }
 
     common_hal_busio_i2c_read(self->bus, self->addr, buf, rxlen);
-    mp_printf(&mp_plat_print, "after i2c read: %d\n", mp_hal_ticks_ms());
+    // mp_printf(&mp_plat_print, "after i2c read: %d\n", mp_hal_ticks_ms());
  
     
     return rxlen;
@@ -766,7 +781,9 @@ void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, b
 
     // check pid.id 3 times before OSError
     for (int i = 0; i < 3; i++) {
-        mp_printf(&mp_plat_print, "Checking for BNO080 PID\n");
+        if (self->debug) {
+            mp_printf(&mp_plat_print, "Checking for BNO080 PID\n");
+        }
         mp_handle_pending(true);
         bno080i2c_sample(self);
         if (self->pid.id == BNO080_PRODUCT_ID_RESPONSE) {
@@ -920,7 +937,9 @@ mp_obj_t common_hal_bno080i2c_BNO080I2C_read(bno080i2c_BNO080I2C_obj_t *self, ui
 
 void common_hal_bno080i2c_BNO080I2C_deinit(bno080i2c_BNO080I2C_obj_t *self) {
     // print that deinit is being called
-    mp_printf(&mp_plat_print, "hal deinit called\n");
+    if (self->debug) {
+        mp_printf(&mp_plat_print, "hal deinit called\n");
+    }
 
     if (!self->bus || !self->addr) {
         return;

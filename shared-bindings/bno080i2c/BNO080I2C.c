@@ -200,9 +200,10 @@ MP_DEFINE_CONST_FUN_OBJ_KW(bno080i2c_bno080i2c_set_feature_obj, 1, bno080i2c_BNO
 
 STATIC mp_obj_t bno080i2c_bno080i2c_read(mp_obj_t self_in, mp_obj_t id) {
     // print that read is called
-    mp_printf(&mp_plat_print, "bno080i2c_BNO080I2C_read\n");
-
     bno080i2c_BNO080I2C_obj_t *self = (bno080i2c_BNO080I2C_obj_t *)self_in;
+    if (self->debug) {
+        mp_printf(&mp_plat_print, "Called bno080i2c_BNO080I2C_read\n");
+    }
     uint32_t report_id = mp_obj_get_int(id);
 
     return common_hal_bno080i2c_BNO080I2C_read(self, report_id);
