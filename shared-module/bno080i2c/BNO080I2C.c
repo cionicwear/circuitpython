@@ -450,6 +450,7 @@ STATIC void bno080i2c_report_rotation(bno080i2c_BNO080I2C_obj_t *self, elapsed_t
     if (self->debug) {
         mp_printf(&mp_plat_print, "updated quat\n");
     }
+    self->quat_recvd = true;
 }
 
 STATIC void bno080i2c_report_accel(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
@@ -479,6 +480,7 @@ STATIC void bno080i2c_report_accel(bno080i2c_BNO080I2C_obj_t *self, elapsed_t ti
     if (self->debug) {
         mp_printf(&mp_plat_print, "updated accel\n");
     }
+    self->accel_recvd = true;
 }
 
 STATIC void bno080i2c_report_gyroscope(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int lens)
@@ -507,6 +509,7 @@ STATIC void bno080i2c_report_gyroscope(bno080i2c_BNO080I2C_obj_t *self, elapsed_
     if (self->debug) {
         mp_printf(&mp_plat_print, "updated gyro\n");
     }
+    self->gyro_recvd = true;
 }
 
 STATIC void bno080i2c_report_magnetic_field(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
@@ -678,7 +681,6 @@ STATIC int bno080i2c_recv(bno080i2c_BNO080I2C_obj_t *self, uint8_t *buf, int len
         mp_printf(&mp_plat_print, "BNO called with nothing to do\n");
         return len;
     }
-
     if (len > BNO080_MAX_RX) {
         mp_printf(&mp_plat_print, "BNO requested len %d max %d\n", len, (BNO080_MAX_RX));
         len = BNO080_MAX_RX;
@@ -691,6 +693,10 @@ STATIC int bno080i2c_recv(bno080i2c_BNO080I2C_obj_t *self, uint8_t *buf, int len
     common_hal_busio_i2c_read(self->bus, self->addr, buf, 4);
 
     uint16_t rxlen = READ_LE(uint16_t, buf);
+    if (len <= 0) {
+        mp_printf(&mp_plat_print, "BNO called with nothing to do\n");
+        return len;
+    }
     if (rxlen > BNO080_MAX_RX) {
         mp_printf(&mp_plat_print, "BNO requested len %d max %d\n", rxlen, (BNO080_MAX_RX));
         rxlen = BNO080_MAX_RX;
@@ -906,12 +912,13 @@ mp_obj_t common_hal_bno080i2c_BNO080I2C_read(bno080i2c_BNO080I2C_obj_t *self, ui
 
     // mp_printf(&mp_plat_print, "time before sample: %d\n", mp_hal_ticks_ms());
     // sample until report is updated (max 10)
-    for (int i = 0; i < 10; i++) {
-        bno080i2c_sample(self);
-        if (self->last_report == report_id) {
-            break;
-        }
-    }
+    // for (int i = 0; i < 10; i++) {
+    //     bno080i2c_sample(self);
+    //     if (self->last_report == report_id) {
+    //         break;
+    //     }
+    // }
+    int num_samples = 0;
 
     // mp_printf(&mp_plat_print, "time after sample: %d\n", mp_hal_ticks_ms());
 
@@ -921,10 +928,23 @@ mp_obj_t common_hal_bno080i2c_BNO080I2C_read(bno080i2c_BNO080I2C_obj_t *self, ui
         case BNO080_SRID_GEOMAGNETIC_ROTATION_VECTOR:
         case BNO080_SRID_GAME_ROTATION_VECTOR:
         case BNO080_SRID_ROTATION_VECTOR:
+            while (!self->quat_recvd && num_samples < 10) {
+                bno080i2c_sample(self);
+                num_samples++;
+            }
+            self->quat_recvd = false;
             return mp_obj_new_list(QUAT_DIMENSION, self->fquat);
         case BNO080_SRID_ACCELEROMETER:
+            while (!self->accel_recvd && num_samples < 10) {
+                bno080i2c_sample(self);
+                num_samples++;
+            }
             return mp_obj_new_list(ACCEL_DIMENSION, self->accel);
         case BNO080_SRID_GYROSCOPE:
+            while (!self->gyro_recvd && num_samples < 10) {
+                bno080i2c_sample(self);
+                num_samples++;
+            }
             return mp_obj_new_list(GYRO_DIMENSION, self->gyro);
         case BNO080_SRID_MAGNETIC_FIELD:
             return mp_obj_new_list(MAG_DIMENSION, self->mag);

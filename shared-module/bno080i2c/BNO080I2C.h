@@ -110,6 +110,9 @@ typedef struct bno080i2c_frs_t {
 typedef struct {
     mp_obj_base_t base;
     bool debug; // debug flag
+    bool quat_recvd;
+    bool accel_recvd;
+    bool gyro_recvd;
     busio_i2c_obj_t *bus;
     bno080i2c_pid_t pid;
     int8_t addr;
