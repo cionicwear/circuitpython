@@ -95,7 +95,11 @@ STATIC int bno080_txrx(bno080_BNO080_obj_t *self, uint8_t *txbuf, uint8_t *rxbuf
         memcpy(tx, txbuf, txlen);
     }
 
+    // print time before
+    // mp_printf(&mp_plat_print, "before time: %d\n", common_hal_time_monotonic_ms());
     common_hal_busio_spi_transfer(self->bus, tx, rxbuf, len);
+    // print time after
+    // mp_printf(&mp_plat_print, "after time: %d\n", common_hal_time_monotonic_ms());
     
     return rxlen;
 }
@@ -142,13 +146,13 @@ STATIC void bno080_pid_response(bno080_BNO080_obj_t *self, elapsed_t timestamp, 
     self->pid.sw_build_number = READ_LE(uint32_t, buf+8);
     self->pid.sw_version_patch = READ_LE(uint16_t, buf+12);
 
-    mp_printf(&mp_plat_print, "mpid.id %d\n", self->pid.id);
-    mp_printf(&mp_plat_print, "mpid.reset_cause %d\n", self->pid.reset_cause);
-    mp_printf(&mp_plat_print, "mpid.sw_ver_major.sw_ver_major %d\n", self->pid.sw_ver_major);
-    mp_printf(&mp_plat_print, "mpid.sw_ver_minor.sw_ver_minor %d\n", self->pid.sw_ver_minor);
-    mp_printf(&mp_plat_print, "mpid.sw_part_number %ld\n", self->pid.sw_part_number);
-    mp_printf(&mp_plat_print, "mpid.sw_build_number %ld\n", self->pid.sw_build_number);
-    mp_printf(&mp_plat_print, "mpid.sw_version_patch %d\n", self->pid.sw_version_patch);
+    // mp_printf(&mp_plat_print, "mpid.id %d\n", self->pid.id);
+    // mp_printf(&mp_plat_print, "mpid.reset_cause %d\n", self->pid.reset_cause);
+    // mp_printf(&mp_plat_print, "mpid.sw_ver_major.sw_ver_major %d\n", self->pid.sw_ver_major);
+    // mp_printf(&mp_plat_print, "mpid.sw_ver_minor.sw_ver_minor %d\n", self->pid.sw_ver_minor);
+    // mp_printf(&mp_plat_print, "mpid.sw_part_number %ld\n", self->pid.sw_part_number);
+    // mp_printf(&mp_plat_print, "mpid.sw_build_number %ld\n", self->pid.sw_build_number);
+    // mp_printf(&mp_plat_print, "mpid.sw_version_patch %d\n", self->pid.sw_version_patch);
 }
 // From 1000-3927 BNO080 Datasheet Figure 1-31: FRS records
 const uint16_t bno080_frs_ids[] = {
@@ -463,6 +467,8 @@ STATIC void bno080_report_rotation(bno080_BNO080_obj_t *self, elapsed_t timestam
     self->fquat[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale);  // j
     self->fquat[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale);  // k
     self->fquat[3] = mp_obj_new_float(READ_LE(int16_t, &pkt[10])*scale);  // real
+
+    // mp_printf(&mp_plat_print, "updated quat\n");
 }
 
 STATIC void bno080_report_accel(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
@@ -488,6 +494,8 @@ STATIC void bno080_report_accel(bno080_BNO080_obj_t *self, elapsed_t timestamp, 
     self->accel[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
     self->accel[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
     self->accel[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+
+    // mp_printf(&mp_plat_print, "updated accel\n");
 }
 
 STATIC void bno080_report_gyroscope(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int lens)
@@ -512,6 +520,8 @@ STATIC void bno080_report_gyroscope(bno080_BNO080_obj_t *self, elapsed_t timesta
     self->gyro[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
     self->gyro[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
     self->gyro[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+
+    // mp_printf(&mp_plat_print, "updated gyro\n");
 }
 
 STATIC void bno080_report_magnetic_field(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
@@ -693,6 +703,9 @@ STATIC int bno080_txrx_spi(bno080_BNO080_obj_t *self, uint8_t **outbuf)
         rxlen &= 0x7fff;
     }
 
+    // mp_printf(&mp_plat_print, "rxlen %d\n", rxlen);
+
+
     // transact payloads
     uint8_t *pobuf = self->txbuf + 4;
     uint8_t *pibuf = self->rxbuf + 4;
@@ -721,6 +734,7 @@ STATIC int bno080_txrx_spi(bno080_BNO080_obj_t *self, uint8_t **outbuf)
 
 STATIC int bno080_spi_sample(bno080_BNO080_obj_t *self)
 {
+    // mp_printf(&mp_plat_print, "bno080_spi_sample\n");
     // save timestamp before transfer
     elapsed_t timestamp = self->last_timestamp;
 
@@ -764,9 +778,11 @@ STATIC int bno080_read_pid(bno080_BNO080_obj_t *self)
 }
 
 STATIC void bno080_isr_recv(void *arg) {
+    // mp_printf(&mp_plat_print, "bno080_isr_recv\n");
     bno080_BNO080_obj_t *self = (bno080_BNO080_obj_t *)arg;
 
     bno080_spi_sample(self);
+    // bno080_spi_sample(self);
 }
 
 void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj_t *bus, const mcu_pin_obj_t *cs, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *ps0, const mcu_pin_obj_t *bootn, const mcu_pin_obj_t *irq) {    
@@ -775,12 +791,25 @@ void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj
     self->init_done = false;
     common_hal_digitalio_digitalinout_construct(&self->cs, cs);
     common_hal_digitalio_digitalinout_switch_to_output(&self->cs, true, DRIVE_MODE_PUSH_PULL);
-    common_hal_digitalio_digitalinout_construct(&self->rst, rst);
-    common_hal_digitalio_digitalinout_switch_to_output(&self->rst, true, DRIVE_MODE_PUSH_PULL);
+    if (rst) {
+        common_hal_digitalio_digitalinout_construct(&self->rst, rst);
+        common_hal_digitalio_digitalinout_switch_to_output(&self->rst, true, DRIVE_MODE_PUSH_PULL);
+        mp_printf(&mp_plat_print, "has rst");
+        self->has_rst = true;
+    } else {
+        mp_printf(&mp_plat_print, "no rst");
+
+        self->has_rst = false;
+    }
     common_hal_digitalio_digitalinout_construct(&self->ps0, ps0);
     common_hal_digitalio_digitalinout_switch_to_output(&self->ps0, true, DRIVE_MODE_PUSH_PULL);
-    common_hal_digitalio_digitalinout_construct(&self->bootn, bootn);
-    common_hal_digitalio_digitalinout_switch_to_output(&self->bootn, true, DRIVE_MODE_PUSH_PULL);
+    if (bootn) {
+        common_hal_digitalio_digitalinout_construct(&self->bootn, bootn);
+        common_hal_digitalio_digitalinout_switch_to_output(&self->bootn, true, DRIVE_MODE_PUSH_PULL);
+        self->has_bootn = true;
+    } else {
+        self->has_bootn = false;
+    }
     common_hal_digitalio_digitalinout_construct(&self->irq, irq);
     common_hal_digitalio_digitalinout_set_irq(&self->irq, EDGE_FALL, PULL_UP, bno080_isr_recv, self);
 
@@ -798,6 +827,8 @@ void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj
         }
     }
 
+    // mp_printf(&mp_plat_print, "BNO080 reading pid\n");
+
     bno080_read_pid(self);
 
     if(self->pid.id != BNO080_PRODUCT_ID_RESPONSE){
@@ -811,10 +842,14 @@ void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj
 
 void common_hal_bno080_BNO080_reset(bno080_BNO080_obj_t *self) {
     common_hal_digitalio_digitalinout_set_value(&self->ps0, true);
-    common_hal_digitalio_digitalinout_set_value(&self->rst, true);
+    if (self->has_rst) {
+        common_hal_digitalio_digitalinout_set_value(&self->rst, true);
 
-    common_hal_digitalio_digitalinout_set_value(&self->rst, false);
-    common_hal_digitalio_digitalinout_set_value(&self->rst, true);
+        common_hal_digitalio_digitalinout_set_value(&self->rst, false);
+        common_hal_digitalio_digitalinout_set_value(&self->rst, true);
+    }
+
+    mp_printf(&mp_plat_print, "BNO080 reset\n");
 
     // clear seqnums
     memset(self->read_seqnums, 0xff, sizeof(self->read_seqnums));
@@ -907,9 +942,13 @@ void common_hal_bno080_BNO080_deinit(bno080_BNO080_obj_t *self) {
     self->bus = 0;
 
     common_hal_digitalio_digitalinout_deinit(&self->cs);
-    common_hal_digitalio_digitalinout_deinit(&self->rst);
+    if (self->has_rst) {
+        common_hal_digitalio_digitalinout_deinit(&self->rst);
+    }
     common_hal_digitalio_digitalinout_deinit(&self->ps0);
-    common_hal_digitalio_digitalinout_deinit(&self->bootn);
+    if (self->has_bootn) {
+        common_hal_digitalio_digitalinout_deinit(&self->bootn);
+    }
     common_hal_digitalio_digitalinout_deinit(&self->irq);
     return;
 }

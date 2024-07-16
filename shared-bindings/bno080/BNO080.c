@@ -83,9 +83,11 @@ STATIC mp_obj_t bno080_bno080_make_new(const mp_obj_type_t *type, size_t n_args,
 
     busio_spi_obj_t *spi = validate_obj_is_spi_bus(args[ARG_spi].u_obj, MP_QSTR_spi);
     const mcu_pin_obj_t *cs = validate_obj_is_free_pin(args[ARG_cs].u_obj, MP_QSTR_cs);
-    const mcu_pin_obj_t *rst = validate_obj_is_free_pin(args[ARG_rst].u_obj, MP_QSTR_rst);
-    const mcu_pin_obj_t *ps0 = validate_obj_is_free_pin(args[ARG_ps0].u_obj, MP_QSTR_ps0);
-    const mcu_pin_obj_t *bootn = validate_obj_is_free_pin(args[ARG_bootn].u_obj, MP_QSTR_bootn);
+    const mcu_pin_obj_t *rst = validate_obj_is_free_pin_or_none(args[ARG_rst].u_obj, MP_QSTR_rst); // optional
+    const mcu_pin_obj_t *ps0 = validate_obj_is_free_pin(args[ARG_ps0].u_obj, MP_QSTR_ps0); 
+
+    
+    const mcu_pin_obj_t *bootn = validate_obj_is_free_pin_or_none(args[ARG_bootn].u_obj, MP_QSTR_bootn); // optional
     const mcu_pin_obj_t *irq = validate_obj_is_free_pin(args[ARG_irq].u_obj, MP_QSTR_irq);
 
     bno080_BNO080_obj_t *self = m_new_obj(bno080_BNO080_obj_t);

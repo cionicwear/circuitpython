@@ -111,8 +111,10 @@ typedef struct {
     bno080_pid_t pid;
     digitalio_digitalinout_obj_t cs;
     digitalio_digitalinout_obj_t rst;
+    bool has_rst;
     digitalio_digitalinout_obj_t ps0;
     digitalio_digitalinout_obj_t bootn;
+    bool has_bootn;
     digitalio_digitalinout_obj_t irq;
     bno080_frs_t frs_saved[BNO080_FRS_SLOTS];
     uint8_t read_seqnums[BNO080_NUM_CHANNELS];
