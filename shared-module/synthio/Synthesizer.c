@@ -1,28 +1,8 @@
-/*
- * This file is part of the Micro Python project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2021 Artyom Skrobov
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2021 Artyom Skrobov
+//
+// SPDX-License-Identifier: MIT
 
 #include "py/runtime.h"
 #include "shared-bindings/synthio/LFO.h"
@@ -100,17 +80,17 @@ void common_hal_synthio_synthesizer_release_all(synthio_synthesizer_obj_t *self)
     }
 }
 
-STATIC bool is_note(mp_obj_t note_in) {
+static bool is_note(mp_obj_t note_in) {
     return mp_obj_is_small_int(note_in) || mp_obj_is_type(note_in, &synthio_note_type);
 }
 
-STATIC mp_obj_t validate_note(mp_obj_t note_in) {
+static mp_obj_t validate_note(mp_obj_t note_in) {
     if (mp_obj_is_small_int(note_in)) {
         mp_arg_validate_int_range(mp_obj_get_int(note_in), 0, 127, MP_QSTR_note);
     } else {
         const mp_obj_type_t *note_type = mp_obj_get_type(note_in);
         if (note_type != &synthio_note_type) {
-            mp_raise_TypeError_varg(translate("%q must be of type %q or %q, not %q"), MP_QSTR_note, MP_QSTR_int, MP_QSTR_Note, note_type->name);
+            mp_raise_TypeError_varg(MP_ERROR_TEXT("%q must be of type %q or %q, not %q"), MP_QSTR_note, MP_QSTR_int, MP_QSTR_Note, note_type->name);
         }
     }
     return note_in;
@@ -184,6 +164,17 @@ mp_obj_t common_hal_synthio_synthesizer_get_pressed_notes(synthio_synthesizer_ob
     }
     return MP_OBJ_FROM_PTR(result);
 }
+
+envelope_state_e common_hal_synthio_synthesizer_note_info(synthio_synthesizer_obj_t *self, mp_obj_t note, mp_float_t *vol_out) {
+    for (int chan = 0; chan < CIRCUITPY_SYNTHIO_MAX_CHANNELS; chan++) {
+        if (self->synth.span.note_obj[chan] == note) {
+            *vol_out = self->synth.envelope_state[chan].level / 32767.;
+            return self->synth.envelope_state[chan].state;
+        }
+    }
+    return (envelope_state_e) - 1;
+}
+
 
 mp_obj_t common_hal_synthio_synthesizer_get_blocks(synthio_synthesizer_obj_t *self) {
     return self->blocks;

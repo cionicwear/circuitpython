@@ -3,7 +3,7 @@
  *
  * The MIT License (MIT)
  *
- * SPDX-FileCopyrightText: Copyright (c) 2013-2015 Damien P. George
+ * Copyright (c) 2013-2015 Damien P. George
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,21 @@
 #include "py/repl.h"
 
 #if MICROPY_HELPER_REPL
+
+// CIRCUITPY-CHANGE: Disable warnings during autocomplete.
+#if CIRCUITPY_WARNINGS
+#include "shared-bindings/warnings/__init__.h"
+#endif
+
+#if MICROPY_PY_SYS_PS1_PS2
+const char *mp_repl_get_psx(unsigned int entry) {
+    if (mp_obj_is_str(MP_STATE_VM(sys_mutable)[entry])) {
+        return mp_obj_str_get_str(MP_STATE_VM(sys_mutable)[entry]);
+    } else {
+        return "";
+    }
+}
+#endif
 
 STATIC bool str_startswith_word(const char *str, const char *head) {
     size_t i;
@@ -148,12 +163,26 @@ STATIC bool test_qstr(mp_obj_t obj, qstr name) {
     if (obj) {
         // try object member
         mp_obj_t dest[2];
+
+        // CIRCUITPY-CHANGE: Disable warnings during autocomplete. test_qstr()
+        // pretends to load every qstr from a module and it can trigger warnings
+        // meant to happen when user code imports them. So, save warning state and
+        // restore it once we've found matching completions.
+        #if CIRCUITPY_WARNINGS
+        warnings_action_t current_action = MP_STATE_THREAD(warnings_action);
+        MP_STATE_THREAD(warnings_action) = WARNINGS_IGNORE;
+        #endif
+
         mp_load_method_protected(obj, name, dest, true);
+
+        #if CIRCUITPY_WARNINGS
+        MP_STATE_THREAD(warnings_action) = current_action;
+        #endif
         return dest[0] != MP_OBJ_NULL;
     } else {
         // try builtin module
-        return mp_map_lookup((mp_map_t *)&mp_builtin_module_map,
-            MP_OBJ_NEW_QSTR(name), MP_MAP_LOOKUP) != NULL;
+        return mp_map_lookup((mp_map_t *)&mp_builtin_module_map, MP_OBJ_NEW_QSTR(name), MP_MAP_LOOKUP) ||
+               mp_map_lookup((mp_map_t *)&mp_builtin_extensible_module_map, MP_OBJ_NEW_QSTR(name), MP_MAP_LOOKUP);
     }
 }
 
@@ -303,10 +332,7 @@ size_t mp_repl_autocomplete(const char *str, size_t len, const mp_print_t *print
                 return sizeof(import_str) - 1 - s_len;
             }
         }
-        if (q_first == 0) {
-            *compl_str = "    ";
-            return s_len ? 0 : 4;
-        }
+        return 0;
     }
 
     // 1 match found, or multiple matches with a common prefix

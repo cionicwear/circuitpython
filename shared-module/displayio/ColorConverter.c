@@ -1,28 +1,8 @@
-/*
- * This file is part of the Micro Python project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2018 Scott Shawcroft for Adafruit Industries
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2018 Scott Shawcroft for Adafruit Industries
+//
+// SPDX-License-Identifier: MIT
 
 #include "shared-bindings/displayio/ColorConverter.h"
 
@@ -187,7 +167,7 @@ bool common_hal_displayio_colorconverter_get_dither(displayio_colorconverter_t *
 
 void common_hal_displayio_colorconverter_make_transparent(displayio_colorconverter_t *self, uint32_t transparent_color) {
     if (self->transparent_color != NO_TRANSPARENT_COLOR) {
-        mp_raise_RuntimeError(translate("Only one color can be transparent at a time"));
+        mp_raise_RuntimeError(MP_ERROR_TEXT("Only one color can be transparent at a time"));
     }
     self->transparent_color = transparent_color;
 }
@@ -263,23 +243,23 @@ uint32_t displayio_colorconverter_convert_pixel(displayio_colorspace_t colorspac
 void displayio_convert_color(const _displayio_colorspace_t *colorspace, bool dither, const displayio_input_pixel_t *input_pixel, displayio_output_pixel_t *output_color) {
     uint32_t pixel = input_pixel->pixel;
     if (dither) {
-        uint8_t randr = (displayio_colorconverter_dither_noise_2(input_pixel->tile_x,input_pixel->tile_y));
-        uint8_t randg = (displayio_colorconverter_dither_noise_2(input_pixel->tile_x + 33,input_pixel->tile_y));
-        uint8_t randb = (displayio_colorconverter_dither_noise_2(input_pixel->tile_x,input_pixel->tile_y + 33));
+        uint8_t randr = (displayio_colorconverter_dither_noise_2(input_pixel->tile_x, input_pixel->tile_y));
+        uint8_t randg = (displayio_colorconverter_dither_noise_2(input_pixel->tile_x + 33, input_pixel->tile_y));
+        uint8_t randb = (displayio_colorconverter_dither_noise_2(input_pixel->tile_x, input_pixel->tile_y + 33));
 
         uint32_t r8 = (pixel >> 16);
         uint32_t g8 = (pixel >> 8) & 0xff;
         uint32_t b8 = pixel & 0xff;
 
         if (colorspace->depth == 16) {
-            b8 = MIN(255,b8 + (randb & 0x07));
-            r8 = MIN(255,r8 + (randr & 0x07));
-            g8 = MIN(255,g8 + (randg & 0x03));
+            b8 = MIN(255, b8 + (randb & 0x07));
+            r8 = MIN(255, r8 + (randr & 0x07));
+            g8 = MIN(255, g8 + (randg & 0x03));
         } else {
             int bitmask = 0xFF >> colorspace->depth;
-            b8 = MIN(255,b8 + (randb & bitmask));
-            r8 = MIN(255,r8 + (randr & bitmask));
-            g8 = MIN(255,g8 + (randg & bitmask));
+            b8 = MIN(255, b8 + (randb & bitmask));
+            r8 = MIN(255, r8 + (randr & bitmask));
+            g8 = MIN(255, g8 + (randg & bitmask));
         }
         pixel = r8 << 16 | g8 << 8 | b8;
     }

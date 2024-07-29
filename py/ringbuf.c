@@ -1,29 +1,12 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2016 Paul Sokolovsky
- * Copyright (c) 2019 Jim Mussared
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2016 Paul Sokolovsky
+// SPDX-FileCopyrightText: Copyright (c) 2019 Jim Mussared
+// SPDX-FileCopyrightText: Copyright (c) 2020 Dan Halbert for Adafruit Industries LLC
+//
+// SPDX-License-Identifier: MIT
+
+// CIRCUITPY-CHANGE: thoroughly reworked
 
 #include "ringbuf.h"
 
@@ -37,8 +20,8 @@ bool ringbuf_init(ringbuf_t *r, uint8_t *buf, size_t size) {
 }
 
 // Dynamic initialization. This should be accessible from a root pointer..
-bool ringbuf_alloc(ringbuf_t *r, size_t size, bool long_lived) {
-    bool result = ringbuf_init(r, gc_alloc(size, false, long_lived), size);
+bool ringbuf_alloc(ringbuf_t *r, size_t size) {
+    bool result = ringbuf_init(r, m_malloc(size), size);
     return result;
 }
 
