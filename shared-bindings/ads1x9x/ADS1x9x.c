@@ -230,9 +230,10 @@ STATIC const mp_rom_map_elem_t ads1x9x_ads1x9x_locals_dict_table[] = {
 };
 STATIC MP_DEFINE_CONST_DICT(ads1x9x_ads1x9x_locals_dict, ads1x9x_ads1x9x_locals_dict_table);
 
-const mp_obj_type_t ads1x9x_ADS1x9x_type = {
-    { &mp_type_type },
-    .name = MP_QSTR_ADS1x9x,
-    .make_new = ads1x9x_ads1x9x_make_new,
-    .locals_dict = (mp_obj_dict_t *)&ads1x9x_ads1x9x_locals_dict,
-};
+MP_DEFINE_CONST_OBJ_TYPE(
+    ads1x9x_ADS1x9x_type,
+    MP_QSTR_ADS1x9x,
+    MP_TYPE_FLAG_NONE,
+    locals_dict, (mp_obj_dict_t *)&ads1x9x_ads1x9x_locals_dict,
+    make_new, ads1x9x_ads1x9x_make_new
+    );

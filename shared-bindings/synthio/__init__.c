@@ -1,28 +1,8 @@
-/*
- * This file is part of the MicroPython project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2021 Artyom Skrobov
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2021 Artyom Skrobov
+//
+// SPDX-License-Identifier: MIT
 
 #include <math.h>
 #include <string.h>
@@ -45,6 +25,39 @@
 
 #include "shared-module/synthio/LFO.h"
 
+//|
+//| """Support for multi-channel audio synthesis
+//|
+//| At least 2 simultaneous notes are supported.  samd5x, mimxrt10xx and rp2040 platforms support up to 12 notes.
+//| """
+//|
+
+//| class EnvelopeState:
+//|     ATTACK: EnvelopeState
+//|     """The note is in its attack phase"""
+//|     DECAY: EnvelopeState
+//|     """The note is in its decay phase"""
+//|     SUSTAIN: EnvelopeState
+//|     """The note is in its sustain phase"""
+//|     RELEASE: EnvelopeState
+//|     """The note is in its release phase"""
+//|
+MAKE_ENUM_VALUE(synthio_note_state_type, note_state, ATTACK, SYNTHIO_ENVELOPE_STATE_ATTACK);
+MAKE_ENUM_VALUE(synthio_note_state_type, note_state, DECAY, SYNTHIO_ENVELOPE_STATE_DECAY);
+MAKE_ENUM_VALUE(synthio_note_state_type, note_state, SUSTAIN, SYNTHIO_ENVELOPE_STATE_SUSTAIN);
+MAKE_ENUM_VALUE(synthio_note_state_type, note_state, RELEASE, SYNTHIO_ENVELOPE_STATE_RELEASE);
+
+MAKE_ENUM_MAP(synthio_note_state) {
+    MAKE_ENUM_MAP_ENTRY(note_state, ATTACK),
+    MAKE_ENUM_MAP_ENTRY(note_state, DECAY),
+    MAKE_ENUM_MAP_ENTRY(note_state, SUSTAIN),
+    MAKE_ENUM_MAP_ENTRY(note_state, RELEASE),
+};
+
+static MP_DEFINE_CONST_DICT(synthio_note_state_locals_dict, synthio_note_state_locals_table);
+MAKE_PRINTER(synthio, synthio_note_state);
+MAKE_ENUM_TYPE(synthio, EnvelopeState, synthio_note_state);
+
 #define default_attack_time (MICROPY_FLOAT_CONST(0.1))
 #define default_decay_time (MICROPY_FLOAT_CONST(0.05))
 #define default_release_time (MICROPY_FLOAT_CONST(0.2))
@@ -59,12 +72,6 @@ static const mp_arg_t envelope_properties[] = {
     { MP_QSTR_sustain_level, MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_obj = MP_OBJ_NULL } },
 };
 
-//|
-//| """Support for multi-channel audio synthesis
-//|
-//| At least 2 simultaneous notes are supported.  samd5x, mimxrt10xx and rp2040 platforms support up to 12 notes.
-//| """
-//|
 //| BlockInput = Union["Math", "LFO", float, None]
 //| """Blocks and Notes can take any of these types as inputs on certain attributes
 //|
@@ -111,7 +118,7 @@ static const mp_arg_t envelope_properties[] = {
 //|     """The level, in the range ``0.0`` to ``1.0`` of the volume of the sustain phase relative to the attack level"""
 //|
 
-STATIC mp_obj_t synthio_envelope_make_new(const mp_obj_type_t *type_in, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
+static mp_obj_t synthio_envelope_make_new(const mp_obj_type_t *type_in, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     mp_arg_val_t args[MP_ARRAY_SIZE(envelope_properties)];
     enum { ARG_attack_time, ARG_decay_time, ARG_release_time, ARG_attack_level, ARG_sustain_level };
     mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(envelope_properties), envelope_properties, args);
@@ -144,23 +151,7 @@ STATIC mp_obj_t synthio_envelope_make_new(const mp_obj_type_t *type_in, size_t n
 };
 
 const mp_obj_namedtuple_type_t synthio_envelope_type_obj = {
-    .base = {
-        .base = {
-            .type = &mp_type_type
-        },
-        .flags = MP_TYPE_FLAG_EXTENDED,
-        .name = MP_QSTR_Envelope,
-        .print = namedtuple_print,
-        .parent = &mp_type_tuple,
-        .make_new = synthio_envelope_make_new,
-        .attr = namedtuple_attr,
-        MP_TYPE_EXTENDED_FIELDS(
-            .unary_op = mp_obj_tuple_unary_op,
-            .binary_op = mp_obj_tuple_binary_op,
-            .subscr = mp_obj_tuple_subscr,
-            .getiter = mp_obj_tuple_getiter,
-            ),
-    },
+    NAMEDTUPLE_TYPE_BASE_AND_SLOTS_MAKE_NEW(MP_QSTR_Envelope, synthio_envelope_make_new),
     .n_fields = 5,
     .fields = {
         MP_QSTR_attack_time,
@@ -203,18 +194,18 @@ const mp_obj_namedtuple_type_t synthio_envelope_type_obj = {
 //|           print("stopped")"""
 //|     ...
 //|
-STATIC mp_obj_t synthio_from_file(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
+static mp_obj_t synthio_from_file(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_file, ARG_sample_rate, ARG_waveform, ARG_envelope };
     static const mp_arg_t allowed_args[] = {
-        { MP_QSTR_file, MP_ARG_OBJ | MP_ARG_REQUIRED },
+        { MP_QSTR_file, MP_ARG_OBJ | MP_ARG_REQUIRED, {} },
         { MP_QSTR_sample_rate, MP_ARG_INT | MP_ARG_KW_ONLY, {.u_int = 11025} },
         { MP_QSTR_waveform, MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_obj = mp_const_none } },
         { MP_QSTR_envelope, MP_ARG_OBJ | MP_ARG_KW_ONLY, {.u_obj = mp_const_none } },
     };
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args, pos_args, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
-    if (!mp_obj_is_type(args[ARG_file].u_obj, &mp_type_fileio)) {
-        mp_raise_TypeError(translate("file must be a file opened in byte mode"));
+    if (!mp_obj_is_type(args[ARG_file].u_obj, &mp_type_vfs_fat_fileio)) {
+        mp_raise_TypeError(MP_ERROR_TEXT("file must be a file opened in byte mode"));
     }
     pyb_file_obj_t *file = MP_OBJ_TO_PTR(args[ARG_file].u_obj);
 
@@ -245,7 +236,7 @@ STATIC mp_obj_t synthio_from_file(size_t n_args, const mp_obj_t *pos_args, mp_ma
     }
     uint32_t track_size = (chunk_header[4] << 24) |
         (chunk_header[5] << 16) | (chunk_header[6] << 8) | chunk_header[7];
-    uint8_t *buffer = m_malloc(track_size, false);
+    uint8_t *buffer = m_malloc(track_size);
     if (f_read(&file->fp, buffer, track_size, &bytes_read) != FR_OK) {
         mp_raise_OSError(MP_EIO);
     }
@@ -253,8 +244,7 @@ STATIC mp_obj_t synthio_from_file(size_t n_args, const mp_obj_t *pos_args, mp_ma
         mp_arg_error_invalid(MP_QSTR_file);
     }
 
-    synthio_miditrack_obj_t *result = m_new_obj(synthio_miditrack_obj_t);
-    result->base.type = &synthio_miditrack_type;
+    synthio_miditrack_obj_t *result = mp_obj_malloc(synthio_miditrack_obj_t, &synthio_miditrack_type);
 
     common_hal_synthio_miditrack_construct(result, buffer, track_size,
         tempo, args[ARG_sample_rate].u_int, args[ARG_waveform].u_obj,
@@ -276,7 +266,7 @@ MP_DEFINE_CONST_FUN_OBJ_KW(synthio_from_file_obj, 1, synthio_from_file);
 //|     """Converts the given midi note (60 = middle C, 69 = concert A) to Hz"""
 //|
 
-STATIC mp_obj_t midi_to_hz(mp_obj_t arg) {
+static mp_obj_t midi_to_hz(mp_obj_t arg) {
     mp_float_t note = mp_arg_validate_type_float(arg, MP_QSTR_note);
     return mp_obj_new_float(common_hal_synthio_midi_to_hz_float(note));
 }
@@ -288,14 +278,19 @@ MP_DEFINE_CONST_FUN_OBJ_1(synthio_midi_to_hz_obj, midi_to_hz);
 //|     24/12 (2.0) corresponds to middle C, 33/12 (2.75) is concert A."""
 //|
 
-STATIC mp_obj_t voct_to_hz(mp_obj_t arg) {
+static mp_obj_t voct_to_hz(mp_obj_t arg) {
     mp_float_t note = mp_arg_validate_obj_float_range(arg, -11, 11, MP_QSTR_ctrl);
     return mp_obj_new_float(common_hal_synthio_voct_to_hz_float(note));
 }
 MP_DEFINE_CONST_FUN_OBJ_1(synthio_voct_to_hz_obj, voct_to_hz);
 
+//|
+//| waveform_max_length: int
+//| """The maximum number of samples permitted in a waveform"""
+//|
+
 #if CIRCUITPY_AUDIOCORE_DEBUG
-STATIC mp_obj_t synthio_lfo_tick(size_t n, const mp_obj_t *args) {
+static mp_obj_t synthio_lfo_tick(size_t n, const mp_obj_t *args) {
     shared_bindings_synthio_lfo_tick(48000);
     mp_obj_t result[n];
     for (size_t i = 0; i < n; i++) {
@@ -309,29 +304,31 @@ STATIC mp_obj_t synthio_lfo_tick(size_t n, const mp_obj_t *args) {
 MP_DEFINE_CONST_FUN_OBJ_VAR(synthio_lfo_tick_obj, 1, synthio_lfo_tick);
 #endif
 
-STATIC const mp_rom_map_elem_t synthio_module_globals_table[] = {
+static const mp_rom_map_elem_t synthio_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_synthio) },
     { MP_ROM_QSTR(MP_QSTR_Biquad), MP_ROM_PTR(&synthio_biquad_type_obj) },
     { MP_ROM_QSTR(MP_QSTR_Math), MP_ROM_PTR(&synthio_math_type) },
     { MP_ROM_QSTR(MP_QSTR_MathOperation), MP_ROM_PTR(&synthio_math_operation_type) },
     { MP_ROM_QSTR(MP_QSTR_MidiTrack), MP_ROM_PTR(&synthio_miditrack_type) },
     { MP_ROM_QSTR(MP_QSTR_Note), MP_ROM_PTR(&synthio_note_type) },
+    { MP_ROM_QSTR(MP_QSTR_EnvelopeState), MP_ROM_PTR(&synthio_note_state_type) },
     { MP_ROM_QSTR(MP_QSTR_LFO), MP_ROM_PTR(&synthio_lfo_type) },
     { MP_ROM_QSTR(MP_QSTR_Synthesizer), MP_ROM_PTR(&synthio_synthesizer_type) },
     { MP_ROM_QSTR(MP_QSTR_from_file), MP_ROM_PTR(&synthio_from_file_obj) },
     { MP_ROM_QSTR(MP_QSTR_Envelope), MP_ROM_PTR(&synthio_envelope_type_obj) },
     { MP_ROM_QSTR(MP_QSTR_midi_to_hz), MP_ROM_PTR(&synthio_midi_to_hz_obj) },
     { MP_ROM_QSTR(MP_QSTR_voct_to_hz), MP_ROM_PTR(&synthio_voct_to_hz_obj) },
+    { MP_ROM_QSTR(MP_QSTR_waveform_max_length), MP_ROM_INT(SYNTHIO_WAVEFORM_SIZE) },
     #if CIRCUITPY_AUDIOCORE_DEBUG
     { MP_ROM_QSTR(MP_QSTR_lfo_tick), MP_ROM_PTR(&synthio_lfo_tick_obj) },
     #endif
 };
 
-STATIC MP_DEFINE_CONST_DICT(synthio_module_globals, synthio_module_globals_table);
+static MP_DEFINE_CONST_DICT(synthio_module_globals, synthio_module_globals_table);
 
 const mp_obj_module_t synthio_module = {
     .base = { &mp_type_module },
     .globals = (mp_obj_dict_t *)&synthio_module_globals,
 };
 
-MP_REGISTER_MODULE(MP_QSTR_synthio, synthio_module, CIRCUITPY_SYNTHIO);
+MP_REGISTER_MODULE(MP_QSTR_synthio, synthio_module);

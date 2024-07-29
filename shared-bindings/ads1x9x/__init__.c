@@ -46,4 +46,4 @@ const mp_obj_module_t ads1x9x_module = {
     .globals = (mp_obj_dict_t *)&ads1x9x_module_globals,
 };
 
-MP_REGISTER_MODULE(MP_QSTR_ads1x9x, ads1x9x_module, CIRCUITPY_ADS1x9x);
+MP_REGISTER_MODULE(MP_QSTR_ads1x9x, ads1x9x_module);

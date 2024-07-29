@@ -1,28 +1,8 @@
-/*
- * This file is part of the Micro Python project, http://micropython.org/
- *
- * The MIT License (MIT)
- *
- * Copyright (c) 2023 Mark Komus
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+// This file is part of the CircuitPython project: https://circuitpython.org
+//
+// SPDX-FileCopyrightText: Copyright (c) 2023 Mark Komus
+//
+// SPDX-License-Identifier: MIT
 
 #include "shared-bindings/gifio/OnDiskGif.h"
 #include "shared-bindings/displayio/Bitmap.h"
@@ -171,7 +151,7 @@ void common_hal_gifio_ondiskgif_construct(gifio_ondiskgif_t *self, pyb_file_obj_
     if (result != 1) {
         switch (self->gif.iError) {
             case GIF_TOO_WIDE:
-                mp_raise_ValueError_varg(translate("%q must be <= %d"), MP_QSTR_width, MAX_WIDTH);
+                mp_raise_ValueError_varg(MP_ERROR_TEXT("%q must be <= %d"), MP_QSTR_width, MAX_WIDTH);
                 break;
             default:
                 mp_arg_error_invalid(MP_QSTR_file);
@@ -181,8 +161,7 @@ void common_hal_gifio_ondiskgif_construct(gifio_ondiskgif_t *self, pyb_file_obj_
 
     int bpp = 16;
     if (use_palette == true) {
-        displayio_palette_t *palette = m_new_obj(displayio_palette_t);
-        palette->base.type = &displayio_palette_type;
+        displayio_palette_t *palette = mp_obj_malloc(displayio_palette_t, &displayio_palette_type);
         common_hal_displayio_palette_construct(palette, 256, false);
         self->palette = palette;
         bpp = 8;
@@ -190,8 +169,7 @@ void common_hal_gifio_ondiskgif_construct(gifio_ondiskgif_t *self, pyb_file_obj_
         self->palette = NULL;
     }
 
-    displayio_bitmap_t *bitmap = m_new_obj(displayio_bitmap_t);
-    bitmap->base.type = &displayio_bitmap_type;
+    displayio_bitmap_t *bitmap = mp_obj_malloc(displayio_bitmap_t, &displayio_bitmap_type);
     common_hal_displayio_bitmap_construct(bitmap, self->gif.iCanvasWidth, self->gif.iCanvasHeight, bpp);
     self->bitmap = bitmap;
 
