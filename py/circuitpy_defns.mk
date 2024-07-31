@@ -101,6 +101,9 @@ endif
 # Select which builtin modules to compile and include.
 # Keep alphabetical.
 
+ifeq ($(CIRCUITPY_ADS1x9x),1)
+SRC_PATTERNS += ads1x9x/%
+endif
 ifeq ($(CIRCUITPY_AESIO),1)
 SRC_PATTERNS += aesio/%
 endif
@@ -603,6 +606,8 @@ SRC_SHARED_MODULE_ALL = \
 	_eve/__init__.c \
 	adafruit_pixelbuf/PixelBuf.c \
 	adafruit_pixelbuf/__init__.c \
+	ads1x9x/ADS1x9x.c \
+	ads1x9x/__init__.c \
 	_pixelmap/PixelMap.c \
 	_pixelmap/__init__.c \
 	_stage/Layer.c \

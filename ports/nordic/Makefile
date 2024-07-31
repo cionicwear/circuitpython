@@ -31,6 +31,12 @@ INC += -I../../lib/mp-readline
 INC += -I../../lib/tinyusb/src
 INC += -I../../supervisor/shared/usb
 
+ifeq ($(CIONIC_LIB), 1)
+INC += -I../../lib/cionic
+SRC_C += ../../lib/cionic/diff_filter.c
+SRC_C += ../../lib/cionic/emg_iir.c
+endif
+
 #Debugging/Optimization
 ifeq ($(DEBUG), 1)
   CFLAGS += -ggdb3
@@ -79,7 +85,7 @@ CFLAGS += \
 CFLAGS += -D__START=main
 
 LDFLAGS = $(CFLAGS) -nostartfiles -Wl,-nostdlib -Wl,-z,max-page-size=0x1000 -Wl,-T,$(GENERATED_LD_FILE) -Wl,-Map=$@.map -Wl,-cref -Wl,-gc-sections -specs=nano.specs
-LIBS := -lgcc -lc
+LIBS := -lgcc -lc -lm
 
 LDFLAGS += -mthumb -mcpu=cortex-m4
 
