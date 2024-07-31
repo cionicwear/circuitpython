@@ -103,6 +103,7 @@ STATIC void ads129x_raw(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out)
     int16_t ads_sample;
 
     for(i = 0 ; i < ADS1X9X_NUM_CHAN ; i++){
+        // int16_t, not int24_t?
         ads_sample = READ_BE(int16_t, in);
         out[i] = (float)ads_sample * self->all_norms[i];
         in += 2;

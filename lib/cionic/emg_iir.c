@@ -15,6 +15,10 @@ float emg_lowpass_filter_sos[NO_OF_BQS][NO_OF_COEFFS_PER_BQ] = {
     {1.0,2.0,1.0,1.0,-1.4083885078365557,0.7369080185138834},
 };
 
+static uint8_t g_emg_sub_sampling_rate = 1;   
+static uint16_t g_ma_size = EMG_RMS_MA_SIZE;   
+
+
 // takes as input a bank of biquad coefficients ( NO_OF_BQS of them ) with the
 // order of the coefficients as shown below. conveniently, this is the same
 // order of the SOS ( second order section ) coefficients as produced by the
@@ -80,12 +84,12 @@ emg_mwa_rms(emg_mwa_state_t *state, float val)
     state->sum -= state->mw[state->write_ptr];    
     // update the delay line
     state->mw[state->write_ptr] = val*val;    
-    state->write_ptr = (state->write_ptr+1) % EMG_RMS_MA_SIZE;
+    state->write_ptr = (state->write_ptr+1) % g_ma_size;
 
     // the latest sum
     state->sum += val*val;
     double result = state->sum;
-    result = sqrt(result/EMG_RMS_MA_SIZE);
+    result = sqrt(result/g_ma_size);
 #ifdef EMG_RMS_DC_BLOCKING
     result = result + state->dc; 
     state->dc = state->dc - result*state->alpha;
@@ -101,7 +105,8 @@ emg_mwa_rms(emg_mwa_state_t *state, float val)
 void
 iir_filter_init(iir_filter_t *filter)
 {
-    filter->emg_rms_sub_sample_counter = EMG_RMS_SUBSAMPLING_FACTOR;
+    filter->emg_rms_sub_sample_counter = g_emg_sub_sampling_rate;
+    g_ma_size = EMG_RMS_MA_SIZE/g_emg_sub_sampling_rate;
     for( int i=0; i<IIR_NUM_CHANNELS; i++) {
         emg_iir_init(&filter->emg_lowpass_iir_state[i]);
         emg_iir_init(&filter->emg_highpass_iir_state[i]);
@@ -140,9 +145,44 @@ iir_filter_process(iir_filter_t *filter, float *norms, int numchans,
     if (filter->emg_rms_sub_sample_counter <= 0)
     {
         *ts_out = ts_in;
-        filter->emg_rms_sub_sample_counter = EMG_RMS_SUBSAMPLING_FACTOR;
+        filter->emg_rms_sub_sample_counter = g_emg_sub_sampling_rate;
         return 0;
     }
 
     return -1;
+}
+
+void set_emg_filter(mp_obj_t coeffs_list, mp_obj_t low) 
+{
+
+    size_t array_size = 0;
+    mp_obj_t *values;
+    mp_obj_get_array(coeffs_list, &array_size, &values);
+    
+
+    float (*emg_filter)[NO_OF_COEFFS_PER_BQ];
+
+    if (low == mp_const_true) {
+        emg_filter = emg_lowpass_filter_sos;
+        mp_printf(&mp_plat_print, "setting the low pass filter bank \n");
+    } else {
+        emg_filter = emg_highpass_filter_sos;
+        mp_printf(&mp_plat_print, "setting the high pass filter bank \n");
+    }
+    
+    for (int i = 0; i < NO_OF_BQS; i++) {
+        mp_printf(&mp_plat_print, "------------------------\n");
+        mp_printf(&mp_plat_print, "bank %d:\n", i);
+        for (int j = 0; j < NO_OF_COEFFS_PER_BQ; j++) {
+            emg_filter[i][j] = mp_obj_get_float(values[i*NO_OF_COEFFS_PER_BQ+j]);
+            mp_printf(&mp_plat_print, "c[%d][%d]: %f;", i, j, (double) emg_filter[i][j]);
+        }
+        mp_printf(&mp_plat_print, "\n");
+    }
+}
+
+void set_emg_decim_rate(mp_obj_t decim_rate)
+{
+    g_emg_sub_sampling_rate =  mp_obj_get_int(decim_rate); 
+    mp_printf(&mp_plat_print, "emg decimation rate set to: %d\n", g_emg_sub_sampling_rate);
 }
