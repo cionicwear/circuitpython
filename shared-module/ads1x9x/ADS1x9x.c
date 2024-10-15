@@ -38,6 +38,17 @@
 #include <string.h>
 #include "py/stream.h"
 
+#include "extmod/vfs.h"
+#include "extmod/vfs_fat.h"
+#include "supervisor/fatfs.h"
+#include "supervisor/filesystem.h"
+#include "tusb.h"
+#include "shared-bindings/storage/__init__.h"
+#define ADS1x9x_RAW_FILE "/raw_data/ads_samples.csv"
+STATIC FIL active_file;
+FATFS *fs;
+
+
 #define ADS1x9x_BAUDRATE    (8000000)
 // TS (4 Bytes) + (nb_chan * sizeof(float)) +  ADS1X9X_SIZE_STATUS_REG + spi_cmd (1 Byte)
 #define TS_LEN              (sizeof(uint32_t))
@@ -137,6 +148,31 @@ STATIC void ads129x_iir_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float
 
 }
 
+STATIC void write_raw_ads_samples(ads_sample_t *samples)
+{
+    UINT chars_written;
+    static bool printonce = true;
+    // char temp[20] = "Hello World\0";
+    // int len = strlen(temp);
+
+    // write to fs only if usb is not connected
+    if (!tud_connected())
+    {
+        // FRESULT res = f_stat(fs,ADS1x9x_RAW_FILE,NULL);
+        // if (FR_OK == res)
+        f_write(&active_file, samples, sizeof(ads_sample_t), &chars_written);
+        // f_write(&active_file, temp, len, &chars_written);
+    }
+    else
+    {
+        if (printonce)
+        {
+            mp_printf(&mp_plat_print, "USB connected, cannot write to file from device\n");
+            printonce = false;
+        }
+    }
+}
+
 STATIC void data_ready_cb(void *arg) {
     static bool g_full = false;
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)arg;
@@ -149,14 +185,26 @@ STATIC void data_ready_cb(void *arg) {
     g_ads_sample.ts = common_hal_time_monotonic_ns() / 100000;
     common_hal_ads1x9x_ADS1x9x_read_data(self, (uint8_t *)g_ads_sample.data, (self->num_chan * self->sample_bytes) + ADS1X9X_SIZE_STATUS_REG);
 
-    if(cionic_ringbuf_write_sample(self->rb, &g_ads_sample, sizeof(ads_sample_t)) == false){
-        if(g_full == false){
-            g_full = true;
-            mp_printf(&mp_plat_print, "ringbuf full!\n");
-        }
-    }else{
-        g_full = false;
+    if (self->debug_en)
+    {
+        write_raw_ads_samples(&g_ads_sample);
     }
+    else
+    {
+        if (cionic_ringbuf_write_sample(self->rb, &g_ads_sample, sizeof(ads_sample_t)) == false)
+        {
+            if (g_full == false)
+            {
+                g_full = true;
+                mp_printf(&mp_plat_print, "ringbuf full!\n");
+            }
+        }
+        else
+        {
+            g_full = false;
+        }
+    }
+
     self->lock = false;
 }
 
@@ -349,4 +397,33 @@ size_t common_hal_ads1x9x_ADS1x9x_read(ads1x9x_ADS1x9x_obj_t *self, mp_buffer_in
     }
 
     return cionic_ringbuf_read_samples(self->rb, ptr, buf_size);
+}
+
+void common_hal_ads1x9x_ADS1x9x_debug(ads1x9x_ADS1x9x_obj_t *self)
+{
+    if (self->debug_en)
+    {
+        // only write to fs if usb is not connected
+        if (!tud_connected())
+        {
+            fs = filesystem_circuitpy();
+            FRESULT res = f_mkdir(fs, "/raw_data");
+            // if((FR_EXIST == res) || (FR_OK == res))
+            {
+                res = f_open(fs, &active_file, ADS1x9x_RAW_FILE, FA_WRITE | FA_OPEN_APPEND);
+            } 
+            if (res)
+            {
+                mp_raise_OSError(EROFS);
+            }
+        }
+        else
+        {
+            mp_printf(&mp_plat_print, "USB connected, cannot open file!\n");
+        }
+    }
+    else
+    {
+        f_close(&active_file);
+    }
 }

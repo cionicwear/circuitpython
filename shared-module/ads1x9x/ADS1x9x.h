@@ -63,6 +63,7 @@ typedef struct {
     uint32_t sample_bytes;
     bool started;
     bool lock;
+    uint8_t debug_en;
     uint8_t id;
     uint8_t num_chan;
     uint8_t filter;
@@ -127,5 +128,6 @@ uint8_t common_hal_ads1x9x_ADS1x9x_read_reg(ads1x9x_ADS1x9x_obj_t *self, uint8_t
 void common_hal_ads1x9x_ADS1x9x_write_reg(ads1x9x_ADS1x9x_obj_t *self, uint8_t addr, uint8_t value);
 void common_hal_ads1x9x_ADS1x9x_read_data(ads1x9x_ADS1x9x_obj_t *self, uint8_t *data, uint16_t len);
 size_t common_hal_ads1x9x_ADS1x9x_read(ads1x9x_ADS1x9x_obj_t *self, mp_buffer_info_t *buf, uint16_t buf_size);
+void common_hal_ads1x9x_ADS1x9x_debug(ads1x9x_ADS1x9x_obj_t *self);
 
 #endif // MICROPY_INCLUDED_SHARED_MODULE_ADS129X_ADS129X_H

@@ -217,8 +217,25 @@ STATIC mp_obj_t ads1x9x_ads1x9x_deinit(mp_obj_t self_in) {
 }
 MP_DEFINE_CONST_FUN_OBJ_1(ads1x9x_ads1x9x_deinit_obj, ads1x9x_ads1x9x_deinit);
 
+//|     def debug(self, debug) -> None:
+//|         """Enables debugging of ADS
+//|            Writes raw data to file
+//|
+//|         :debug: Enable/Disable debug
+//|         :return: None
+
+STATIC mp_obj_t ads1x9x_ads1x9x_debug(mp_obj_t self_in, mp_obj_t debug) 
+{
+    ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)self_in;
+    self->debug_en = (uint8_t)mp_obj_get_int(debug);
+    common_hal_ads1x9x_ADS1x9x_debug(self);
+    return mp_const_none;
+}
+MP_DEFINE_CONST_FUN_OBJ_2(ads1x9x_ads1x9x_debug_obj, ads1x9x_ads1x9x_debug);
+
 STATIC const mp_rom_map_elem_t ads1x9x_ads1x9x_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_reset), MP_ROM_PTR(&ads1x9x_ads1x9x_reset_obj) },
+    { MP_ROM_QSTR(MP_QSTR_debug), MP_ROM_PTR(&ads1x9x_ads1x9x_debug_obj) },
     { MP_ROM_QSTR(MP_QSTR_sample_size_get), MP_ROM_PTR(&ads1x9x_ads1x9x_sample_size_get_obj) },
     { MP_ROM_QSTR(MP_QSTR_filter_set), MP_ROM_PTR(&ads1x9x_ads1x9x_filter_set_obj) },
     { MP_ROM_QSTR(MP_QSTR_read_reg), MP_ROM_PTR(&ads1x9x_ads1x9x_read_reg_obj) },
