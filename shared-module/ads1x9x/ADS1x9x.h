@@ -60,7 +60,9 @@ typedef struct {
     diff_filter_t diff_filter;
     iir_filter_t iir_filter;
     ringbuf_t *rb;
+    ringbuf_t *write_rb;
     uint32_t sample_bytes;
+    bool writing_to_csv;
     bool started;
     bool lock;
     uint8_t id;

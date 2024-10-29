@@ -36,12 +36,25 @@
 
 #include "py/mperrno.h"
 #include <string.h>
+#include <stdio.h>
 #include "py/stream.h"
+
+#include "extmod/vfs.h"
+#include "extmod/vfs_fat.h"
+#include "supervisor/fatfs.h"
+#include "supervisor/filesystem.h"
+#include "tusb.h"
+#include "shared-bindings/storage/__init__.h"
+#define ADS1x9x_RAW_FILE "/raw_data/ads_samples.csv"
+STATIC FIL active_file;
+FATFS *fs;
+int num_samples = 0;
 
 #define ADS1x9x_BAUDRATE    (8000000)
 // TS (4 Bytes) + (nb_chan * sizeof(float)) +  ADS1X9X_SIZE_STATUS_REG + spi_cmd (1 Byte)
 #define TS_LEN              (sizeof(uint32_t))
 #define MAX_BUF_LEN         ((ADS1X9X_NUM_CHAN * sizeof(float)) + ADS1X9X_SIZE_STATUS_REG + 1 + TS_LEN)
+#define RB_SIZE             400
 
 typedef struct ads_sample_t{
     uint32_t ts;
@@ -137,8 +150,95 @@ STATIC void ads129x_iir_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float
 
 }
 
+STATIC void write_raw_ads_samples(ads1x9x_ADS1x9x_obj_t *self, ads_sample_t *samples)
+{
+    UINT chars_written;
+    // make bytearray for the samples, allocate enough memory for RB_SIZE * sizeof(ads_sample_t)
+    uint8_t *samples_from_rb = m_new(uint8_t, RB_SIZE * sizeof(ads_sample_t));
+    mp_printf(&mp_plat_print, "writing to csv from c!\n");
+    mp_hal_delay_ms(250);
+
+    FRESULT res = f_open(fs, &active_file, ADS1x9x_RAW_FILE, FA_WRITE | FA_OPEN_APPEND);
+    if (res) {
+        mp_raise_OSError(EROFS);
+    }
+    mp_printf(&mp_plat_print, "opened file\n");
+    mp_hal_delay_ms(250);
+
+    // TO TEST STRINGS //
+    // char temp[20] = "Hello World\0";
+    // int len = strlen(temp);
+    // f_write(&active_file, temp, len, &chars_written);
+    // f_write(&active_file, "\n", 1, &chars_written);
+    // mp_printf(&mp_plat_print, "wrote to file\n");
+    // mp_hal_delay_ms(250);
+
+    // if (f_close(&active_file)) {
+    //     mp_raise_OSError(EROFS);
+    // }
+    // mp_printf(&mp_plat_print, "closed file\n");
+    // mp_hal_delay_ms(250);
+
+    // TO TEST INTS //
+    uint8_t temp[20];
+    for (int i = 0; i < 20; i++) {
+        temp[i] = i + 1;
+    }
+    char buffer[256] = {0};
+    int offset = 0;
+    for (int i = 0; i < 20; i++) {
+        offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%d", temp[i]);
+        if (i < 19) {
+            offset += snprintf(buffer + offset, sizeof(buffer) - offset, ",");
+        }
+    }
+    snprintf(buffer + offset, sizeof(buffer) - offset, "\n");
+    f_write(&active_file, buffer, strlen(buffer), &chars_written);
+    mp_printf(&mp_plat_print, "Wrote %u bytes to file\n", chars_written);
+
+    
+    if (f_close(&active_file)) {
+        mp_raise_OSError(EROFS);
+    }
+    mp_printf(&mp_plat_print, "closed file\n");
+    mp_hal_delay_ms(250);
+
+    // TESTING REAL THING //
+    // char buffer[256] = {0};
+    // int offset = 0;
+
+    // for (int i = 0; i < num_samples; i++) {
+    //     offset += snprintf(buffer + offset, sizeof(buffer) - offset, "%d", samples_from_rb[i]);
+    //     if (i < num_samples-1) {
+    //         offset += snprintf(buffer + offset, sizeof(buffer) - offset, ",");
+    //     }
+    // }
+
+    // snprintf(buffer + offset, sizeof(buffer) - offset, "\n");
+    // f_write(&active_file, buffer, strlen(buffer), &chars_written);
+    // mp_printf(&mp_plat_print, "Wrote %u bytes to file\n", chars_written);
+    // // print the buffer to the terminal too
+    // mp_printf(&mp_plat_print, "buffer: %s\n", buffer);
+
+    // REAL THING //
+    // int numbytes = cionic_ringbuf_read_samples(self->write_rb, &samples_from_rb, sizeof(ads_sample_t));
+    // mp_printf(&mp_plat_print, "numbytes: %d\n", numbytes);
+    // numbytes = cionic_ringbuf_read_samples(self->write_rb, &samples_from_rb, RB_SIZE/4 * sizeof(ads_sample_t));
+    // mp_printf(&mp_plat_print, "numbytes: %d\n", numbytes);
+    // mp_hal_delay_ms(250);
+    // f_write(&active_file, samples_from_rb, num_samples * sizeof(char), &chars_written);
+
+    
+
+    // free the memory allocated for the samples
+    m_free(samples_from_rb);
+}
+
 STATIC void data_ready_cb(void *arg) {
-    static bool g_full = false;
+    num_samples++; // added this for csv writing, since cionic_ringbuf_num_samples() causes an error
+
+    static bool g_full;
+    static bool g_full_rbwrite;
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)arg;
     self->lock = true;
 
@@ -150,12 +250,42 @@ STATIC void data_ready_cb(void *arg) {
     common_hal_ads1x9x_ADS1x9x_read_data(self, (uint8_t *)g_ads_sample.data, (self->num_chan * self->sample_bytes) + ADS1X9X_SIZE_STATUS_REG);
 
     if(cionic_ringbuf_write_sample(self->rb, &g_ads_sample, sizeof(ads_sample_t)) == false){
-        if(g_full == false){
-            g_full = true;
-            mp_printf(&mp_plat_print, "ringbuf full!\n");
-        }
+        if (g_full == false)
+            {
+                g_full = true;
+                mp_printf(&mp_plat_print, "ringbuf full!\n");
+            }
     }else{
         g_full = false;
+    }
+    if(cionic_ringbuf_write_sample(self->write_rb, &g_ads_sample, sizeof(ads_sample_t)) == false){
+        if (g_full_rbwrite == false)
+            {
+                g_full_rbwrite = true;
+                mp_printf(&mp_plat_print, "storage ringbuf full!\n");
+            }
+    }else{
+        g_full_rbwrite = false;
+    }
+
+    if (self->writing_to_csv == false)
+    {
+        mp_printf(&mp_plat_print, "writing to csv at %d samples\n", RB_SIZE/2); // a correct print statement
+        // int curr = cionic_ringbuf_num_samples(self->write_rb); // causes error
+        mp_printf(&mp_plat_print, "num samples: %d\n", num_samples);
+        mp_hal_delay_ms(50);
+
+        if (num_samples > RB_SIZE/2) {
+            mp_printf(&mp_plat_print, "enough samples!\n");
+            mp_hal_delay_ms(50);
+
+            self->writing_to_csv = true; // set flag to prevent multiple writes at once
+            write_raw_ads_samples(self, &g_ads_sample);
+            self->writing_to_csv = false;
+
+            // clear the counter
+            num_samples = 0;
+        }
     }
     self->lock = false;
 }
@@ -212,15 +342,39 @@ void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi
     diff_filter_init(&self->diff_filter);
     iir_filter_init(&self->iir_filter);
     memset(&g_ads_sample, 0, sizeof(ads_sample_t));
-    self->rb = cionic_ringbuf_alloc(sizeof(ads_sample_t), 400);
-   
-
+    self->rb = cionic_ringbuf_alloc(sizeof(ads_sample_t), RB_SIZE);   
     if(self->rb == NULL){
         mp_raise_OSError(ENOMEM);
         return;
     }
-
     cionic_ringbuf_clear(self->rb);
+
+    // add a second ringbuf for writing to csv
+    self->write_rb = cionic_ringbuf_alloc(sizeof(ads_sample_t), RB_SIZE);
+    self->writing_to_csv = false;
+    if(self->write_rb == NULL){
+        mp_raise_OSError(ENOMEM);
+        return;
+    }
+    cionic_ringbuf_clear(self->write_rb);
+    mp_printf(&mp_plat_print, "buffers constructed\n");
+
+    // set up filesystem and create directory
+    // only write to fs if usb is not connected
+    // if (!tud_connected())
+    // {
+    fs = filesystem_circuitpy();
+    FRESULT res = f_mkdir(fs, "/raw_data");
+    if (res != FR_OK && res != FR_EXIST)
+    {
+        mp_raise_OSError(EROFS);
+    }
+    mp_printf(&mp_plat_print, "created directory\n");
+    // }
+    // else
+    // {
+    //     mp_printf(&mp_plat_print, "USB connected, cannot open file!\n");
+    // }
 }
 
 void common_hal_ads1x9x_ADS1x9x_filter_set(ads1x9x_ADS1x9x_obj_t *self, uint8_t filt) {
@@ -255,6 +409,9 @@ void common_hal_ads1x9x_ADS1x9x_deinit(ads1x9x_ADS1x9x_obj_t *self) {
     common_hal_digitalio_digitalinout_deinit(&self->drdy);
     common_hal_digitalio_digitalinout_deinit(&self->start);
     common_hal_digitalio_digitalinout_deinit(&self->pwdn);
+
+    // close any open files
+    f_close(&active_file);
     return;
 }
 
