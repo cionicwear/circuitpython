@@ -48,4 +48,4 @@ const mp_obj_module_t bno080i2c_module = {
     .globals = (mp_obj_dict_t *)&bno080i2c_module_globals,
 };
 
-MP_REGISTER_MODULE(MP_QSTR_bno080i2c, bno080i2c_module, CIRCUITPY_BNO080I2C);
+MP_REGISTER_MODULE(MP_QSTR_bno080i2c, bno080i2c_module);
