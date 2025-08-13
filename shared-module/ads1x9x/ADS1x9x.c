@@ -40,9 +40,15 @@
 
 #define ADS1x9x_BAUDRATE    (8000000)
 // TS (4 Bytes) + (nb_chan * sizeof(float)) +  ADS1X9X_SIZE_STATUS_REG + spi_cmd (1 Byte)
-#define MAX_BUF_LEN         (ADS1X9X_NUM_CHAN * sizeof(float)) + ADS1X9X_SIZE_STATUS_REG + 1
+#define TS_LEN              (sizeof(uint32_t))
+#define MAX_BUF_LEN         ((ADS1X9X_NUM_CHAN * sizeof(float)) + ADS1X9X_SIZE_STATUS_REG + 1 + TS_LEN)
 
-float g_ads_buffer[ADS1X9X_NUM_CHAN] = {0};
+typedef struct ads_sample_t{
+    uint32_t ts;
+    float data[ADS1X9X_NUM_CHAN];
+}ads_sample_t;
+
+static ads_sample_t g_ads_sample;
 
 // ads129x datasheet 9.4.1.3.3
 // ads121x datasheet p.25 - Data Format
@@ -132,6 +138,7 @@ STATIC void ads129x_iir_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float
 }
 
 STATIC void data_ready_cb(void *arg) {
+    static bool g_full = false;
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)arg;
     self->lock = true;
 
@@ -139,7 +146,17 @@ STATIC void data_ready_cb(void *arg) {
         return;
     }
 
-    common_hal_ads1x9x_ADS1x9x_read_data(self, (uint8_t *)g_ads_buffer, (self->num_chan * self->sample_bytes) + ADS1X9X_SIZE_STATUS_REG);
+    g_ads_sample.ts = common_hal_time_monotonic_ns() / 100000;
+    common_hal_ads1x9x_ADS1x9x_read_data(self, (uint8_t *)g_ads_sample.data, (self->num_chan * self->sample_bytes) + ADS1X9X_SIZE_STATUS_REG);
+
+    if(cionic_ringbuf_write_sample(self->rb, &g_ads_sample, sizeof(ads_sample_t)) == false){
+        if(g_full == false){
+            g_full = true;
+            mp_printf(&mp_plat_print, "ringbuf full!\n");
+        }
+    }else{
+        g_full = false;
+    }
     self->lock = false;
 }
 
@@ -160,6 +177,7 @@ void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi
     self->num_chan = ADS1X9X_NUM_CHAN;
     self->sample_bytes = 0;
     self->filter = ADS1x9x_IIR_FILTER;
+    self->lock = false;
 
     common_hal_digitalio_digitalinout_construct(&self->cs, cs);
     common_hal_digitalio_digitalinout_switch_to_output(&self->cs, true, DRIVE_MODE_PUSH_PULL);
@@ -193,6 +211,16 @@ void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi
     ads1x9x_set_norms(self);
     diff_filter_init(&self->diff_filter);
     iir_filter_init(&self->iir_filter);
+    memset(&g_ads_sample, 0, sizeof(ads_sample_t));
+    self->rb = cionic_ringbuf_alloc(sizeof(ads_sample_t), 400);
+   
+
+    if(self->rb == NULL){
+        mp_raise_OSError(ENOMEM);
+        return;
+    }
+
+    cionic_ringbuf_clear(self->rb);
 }
 
 void common_hal_ads1x9x_ADS1x9x_filter_set(ads1x9x_ADS1x9x_obj_t *self, uint8_t filt) {
@@ -306,7 +334,6 @@ void common_hal_ads1x9x_ADS1x9x_read_data(ads1x9x_ADS1x9x_obj_t *self, uint8_t *
         ads129x_iir_filtered(self, rx_buf, (float *)data, len - ADS1X9X_SIZE_STATUS_REG);
     }
     
-    
     unlock_bus(self);
 }
 
@@ -321,6 +348,5 @@ size_t common_hal_ads1x9x_ADS1x9x_read(ads1x9x_ADS1x9x_obj_t *self, mp_buffer_in
         }
     }
 
-    memcpy(ptr, g_ads_buffer, buf_size);
-    return buf_size;
+    return cionic_ringbuf_read_samples(self->rb, ptr, buf_size);
 }

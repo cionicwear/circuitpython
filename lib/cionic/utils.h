@@ -73,4 +73,9 @@ typedef struct PACKED uint24_t {
 #define WRITE_LE(TYPE, PTR, VAL) _WRITE_ENDIAN(TYPE, PTR, VAL, CIONIC_BIG_ENDIAN)
 #define WRITE_BE(TYPE, PTR, VAL) _WRITE_ENDIAN(TYPE, PTR, VAL, CIONIC_LITTLE_ENDIAN)
 
+#ifndef ARRAY_SIZE
+#define ARRAY_SIZE(array) \
+        (sizeof(array) / sizeof((array)[0]))
+#endif
+
 #endif //#ifndef __UTILS_H__
