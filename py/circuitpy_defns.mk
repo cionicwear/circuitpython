@@ -107,6 +107,9 @@ endif
 ifeq ($(CIRCUITPY_BNO080),1)
 SRC_PATTERNS += bno080/%
 endif
+ifeq ($(CIRCUITPY_BNO080I2C),1)
+SRC_PATTERNS += bno080i2c/%
+endif
 ifeq ($(CIRCUITPY_AESIO),1)
 SRC_PATTERNS += aesio/%
 endif
@@ -613,6 +616,8 @@ SRC_SHARED_MODULE_ALL = \
 	ads1x9x/__init__.c \
 	bno080/BNO080.c \
 	bno080/__init__.c \
+	bno080i2c/BNO080I2C.c \
+	bno080i2c/__init__.c \
 	_pixelmap/PixelMap.c \
 	_pixelmap/__init__.c \
 	_stage/Layer.c \
