@@ -167,9 +167,10 @@ STATIC const mp_rom_map_elem_t bno080_bno080_locals_dict_table[] = {
 };
 STATIC MP_DEFINE_CONST_DICT(bno080_bno080_locals_dict, bno080_bno080_locals_dict_table);
 
-const mp_obj_type_t bno080_BNO080_type = {
-    { &mp_type_type },
-    .name = MP_QSTR_BNO080,
-    .make_new = bno080_bno080_make_new,
-    .locals_dict = (mp_obj_dict_t *)&bno080_bno080_locals_dict,
-};
+MP_DEFINE_CONST_OBJ_TYPE(
+    bno080_BNO080_type,
+    MP_QSTR_BNO080,
+    MP_TYPE_FLAG_NONE, // update if needs attribute/proper accessors
+    make_new, bno080_bno080_make_new,
+    locals_dict, &bno080_bno080_locals_dict
+    );
