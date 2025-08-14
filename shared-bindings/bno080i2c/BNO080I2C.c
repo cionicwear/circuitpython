@@ -71,9 +71,9 @@
 //|             bno = bno080i2c.BNO080I2C(board.I2C(), board.ADDR, board.BNO_RST, board.BNO_PS0, board.BNO_BOOTN, board.BNO_INT)
 
 STATIC mp_obj_t bno080i2c_bno080i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
-    enum { ARG_i2c, ARG_addr, 
-    // ARG_rst, ARG_ps0, ARG_bootn, ARG_irq, 
-    ARG_debug, NUM_ARGS };
+    enum { ARG_i2c, ARG_addr,
+           // ARG_rst, ARG_ps0, ARG_bootn, ARG_irq,
+           ARG_debug, NUM_ARGS };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_i2c, MP_ARG_OBJ, {.u_obj = mp_const_none } },
         { MP_QSTR_addr, MP_ARG_INT, {.u_int = 0x4B} },
@@ -156,7 +156,7 @@ STATIC mp_obj_t bno080i2c_BNO080I2C_set_feature(size_t n_args, const mp_obj_t *p
     }
 
     enum { ARG_feature, ARG_refresh_us, ARG_batch_us, ARG_flags, ARG_sns, ARG_cfg, NUM_ARGS };
-    
+
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_feature,    MP_ARG_INT | MP_ARG_REQUIRED },
         { MP_QSTR_refresh_us, MP_ARG_INT | MP_ARG_REQUIRED },
@@ -169,7 +169,7 @@ STATIC mp_obj_t bno080i2c_BNO080I2C_set_feature(size_t n_args, const mp_obj_t *p
     // bno080i2c_BNO080I2C_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
-    
+
     uint8_t feature = args[ARG_feature].u_int;
     uint32_t refresh_us = args[ARG_refresh_us].u_int;
     uint32_t batch_us = args[ARG_batch_us].u_int;

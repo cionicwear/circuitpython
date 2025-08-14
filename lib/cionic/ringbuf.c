@@ -107,4 +107,3 @@ bool cionic_ringbuf_write_sample(ringbuf_t *rb, const void *_buf, int buflen)
 
     return true;
 }
-

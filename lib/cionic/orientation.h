@@ -26,7 +26,7 @@ void orientation_normalize(float *calibration, float *quat_in, float *quat_out);
 //
 void orientation_quaternion_to_euler(float *quaternion, float *euler);
 
-// convert euler to quaternion 
+// convert euler to quaternion
 //
 void euler_to_orientation_quaternion(float *euler, float *quaternion);
 

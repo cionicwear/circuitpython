@@ -5,7 +5,7 @@
 // quaternion is a 4 float array [x,y,z,w]
 
 void
-orientation_multiply(float *a, float *b, float *out) 
+orientation_multiply(float *a, float *b, float *out)
 {
     // val rw = a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z
     out[3] = a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2];
@@ -50,12 +50,12 @@ orientation_forward(float rotation, float *out)
 
 // apply calibration to quat_in to produce quat_out
 //
-void 
+void
 orientation_normalize(float *calibration, float *quat_in, float *quat_out)
 {
     float uprighted[5];
     orientation_multiply(quat_in, calibration, uprighted);
-    
+
     float forward[5];
     orientation_forward(calibration[4], forward);
 
@@ -64,12 +64,12 @@ orientation_normalize(float *calibration, float *quat_in, float *quat_out)
 
     float norm[5];
     orientation_forward(-calibration[4], norm);
-    
+
     orientation_multiply(norm, forwarded, quat_out);
-} 
+}
 
 
-void 
+void
 orientation_quaternion_to_euler(float *q, float *e)
 {
     // roll (x-axis rotation)
@@ -85,7 +85,7 @@ orientation_quaternion_to_euler(float *q, float *e)
     else {
         e[1] = copysign(M_PI_2, sinp);
     }
-    
+
     // yaw (z-axis rotation)
     float siny =  2.0 * (q[3] * q[2] + q[0] * q[1]);
     float cosy = 1.0 - 2.0 * (q[1] * q[1] + q[2] * q[2]);
@@ -97,12 +97,12 @@ orientation_quaternion_to_euler(float *q, float *e)
 def get_quaternion_from_euler(roll, pitch, yaw):
   """
   Convert an Euler angle to a quaternion.
-   
+
   Input
     :param roll: The roll (rotation around x-axis) angle in radians.
     :param pitch: The pitch (rotation around y-axis) angle in radians.
     :param yaw: The yaw (rotation around z-axis) angle in radians.
- 
+
   Output
     :return qx, qy, qz, qw: The orientation in quaternion [x,y,z,w] format
   """
@@ -110,19 +110,19 @@ def get_quaternion_from_euler(roll, pitch, yaw):
   qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
   qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
   qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
- 
+
   return [qx, qy, qz, qw]
 
 */
 
-void 
+void
 euler_to_orientation_quaternion(float *e, float *q)
 {
     float roll, pitch, yaw;
     roll = e[0];
     pitch = e[1];
     yaw = e[2];
-    
+
     q[0] = sin(roll/2) * cos(pitch/2) * cos(yaw/2) - cos(roll/2) * sin(pitch/2) * sin(yaw/2);
     q[1] = cos(roll/2) * sin(pitch/2) * cos(yaw/2) + sin(roll/2) * cos(pitch/2) * sin(yaw/2);
     q[2] = cos(roll/2) * cos(pitch/2) * sin(yaw/2) - sin(roll/2) * sin(pitch/2) * cos(yaw/2);
@@ -167,4 +167,3 @@ int orientation_cal_forward(float *quat, float *calibration)
     calibration[4] = 0;
     return -1;
 }
-

@@ -53,14 +53,12 @@ STATIC void unlock_bus(bno080_BNO080_obj_t *self) {
     common_hal_busio_spi_unlock(self->bus);
 }
 
-STATIC void bno080_post_response(bno080_BNO080_obj_t *self, uint8_t response_id)
-{
+STATIC void bno080_post_response(bno080_BNO080_obj_t *self, uint8_t response_id) {
     self->resp = response_id;
 }
 
-STATIC void bno080_wait_for_response(bno080_BNO080_obj_t *self, uint8_t response_id)
-{
-    while(self->resp != response_id){
+STATIC void bno080_wait_for_response(bno080_BNO080_obj_t *self, uint8_t response_id) {
+    while (self->resp != response_id) {
         mp_handle_pending(true);
         // Allow user to break out of a timeout with a KeyboardInterrupt.
         if (mp_hal_is_interrupted()) {
@@ -71,16 +69,15 @@ STATIC void bno080_wait_for_response(bno080_BNO080_obj_t *self, uint8_t response
     self->resp = 0;
 }
 
-STATIC int bno080_txrx(bno080_BNO080_obj_t *self, uint8_t *txbuf, uint8_t *rxbuf, int txlen, int rxlen)
-{
+STATIC int bno080_txrx(bno080_BNO080_obj_t *self, uint8_t *txbuf, uint8_t *rxbuf, int txlen, int rxlen) {
     if (txlen <= 0 && rxlen <= 0) {
         mp_printf(&mp_plat_print, "BNO called with nothing to do\n");
         return rxlen;
     }
 
-    if (rxlen > BNO080_MAX_RX- 4) {
-        mp_printf(&mp_plat_print, "BNO requested len %d max %d\n", rxlen, (BNO080_MAX_RX- 4));
-        rxlen = BNO080_MAX_RX- 4;
+    if (rxlen > BNO080_MAX_RX - 4) {
+        mp_printf(&mp_plat_print, "BNO requested len %d max %d\n", rxlen, (BNO080_MAX_RX - 4));
+        rxlen = BNO080_MAX_RX - 4;
     }
 
     int len = MAX(txlen, rxlen);
@@ -96,7 +93,7 @@ STATIC int bno080_txrx(bno080_BNO080_obj_t *self, uint8_t *txbuf, uint8_t *rxbuf
     }
 
     common_hal_busio_spi_transfer(self->bus, tx, rxbuf, len);
-    
+
     return rxlen;
 }
 
@@ -110,8 +107,7 @@ STATIC int bno080_txrx(bno080_BNO080_obj_t *self, uint8_t *txbuf, uint8_t *rxbuf
  *
  * @returns        0 on success else ERROR
  */
-STATIC int bno080_spi_send(bno080_BNO080_obj_t *self, uint8_t channel, const uint8_t *buf, int len)
-{
+STATIC int bno080_spi_send(bno080_BNO080_obj_t *self, uint8_t channel, const uint8_t *buf, int len) {
     lock_bus(self);
     if ((self->txlen + len + 4) > (int)sizeof(self->txbuf)) {
         return ENOMEM;
@@ -119,28 +115,27 @@ STATIC int bno080_spi_send(bno080_BNO080_obj_t *self, uint8_t channel, const uin
 
     uint8_t *txbuf = &self->txbuf[self->txlen];
 
-    txbuf[0] = len+4;
+    txbuf[0] = len + 4;
     txbuf[1] = 0;
     txbuf[2] = channel;
     txbuf[3] = self->write_seqnums[channel]++;
 
-    memcpy(txbuf+4, buf, len);
-    self->txlen += len+4;
+    memcpy(txbuf + 4, buf, len);
+    self->txlen += len + 4;
 
     common_hal_digitalio_digitalinout_set_value(&self->ps0, false);
     unlock_bus(self);
     return 0;
 }
 
-STATIC void bno080_pid_response(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len)
-{
+STATIC void bno080_pid_response(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len) {
     self->pid.id = READ_LE(uint8_t, buf);
-    self->pid.reset_cause = READ_LE(uint8_t, buf+1);
-    self->pid.sw_ver_major = READ_LE(uint8_t, buf+2);
-    self->pid.sw_ver_minor = READ_LE(uint8_t, buf+3);
-    self->pid.sw_part_number = READ_LE(uint32_t, buf+4);
-    self->pid.sw_build_number = READ_LE(uint32_t, buf+8);
-    self->pid.sw_version_patch = READ_LE(uint16_t, buf+12);
+    self->pid.reset_cause = READ_LE(uint8_t, buf + 1);
+    self->pid.sw_ver_major = READ_LE(uint8_t, buf + 2);
+    self->pid.sw_ver_minor = READ_LE(uint8_t, buf + 3);
+    self->pid.sw_part_number = READ_LE(uint32_t, buf + 4);
+    self->pid.sw_build_number = READ_LE(uint32_t, buf + 8);
+    self->pid.sw_version_patch = READ_LE(uint16_t, buf + 12);
 
     mp_printf(&mp_plat_print, "mpid.id %d\n", self->pid.id);
     mp_printf(&mp_plat_print, "mpid.reset_cause %d\n", self->pid.reset_cause);
@@ -173,7 +168,7 @@ const uint16_t bno080_frs_ids[] = {
     0x1AC9, // Environmental sensor - Humidity calibration
     0x39B1, // Environmental sensor - Ambient light calibration
     0x4DA2, // Environmental sensor - Proximity calibration
-    0xD401, // ALS Calibration
+    0xD401, // ALSO Calibration
     0xD402, // Proximity Sensor Calibration
     0xED85, // Stability detector configuration
     0x74B4, // User record
@@ -190,13 +185,12 @@ typedef struct frs_write_t {
 uint32_t bno080_rotation_vector_config[] = { 0xccccccd, 0x410624e, 0x191eb852, 0x0 };
 
 const frs_write_t bno080_frs_writes[] = {
-     // { frs_id, offset, data0, data1 }
-     { 0x3E2D, ARRAY_SIZE(bno080_rotation_vector_config), bno080_rotation_vector_config },
-     { 0x3E2E, ARRAY_SIZE(bno080_rotation_vector_config), bno080_rotation_vector_config }
+    // { frs_id, offset, data0, data1 }
+    { 0x3E2D, ARRAY_SIZE(bno080_rotation_vector_config), bno080_rotation_vector_config },
+    { 0x3E2E, ARRAY_SIZE(bno080_rotation_vector_config), bno080_rotation_vector_config }
 };
 
-STATIC int bno080_spi_frs(bno080_BNO080_obj_t *self)
-{
+STATIC int bno080_spi_frs(bno080_BNO080_obj_t *self) {
     // 1. write configurations
     //
     if (self->frs_write < (int)ARRAY_SIZE(bno080_frs_writes)) {
@@ -213,8 +207,7 @@ STATIC int bno080_spi_frs(bno080_BNO080_obj_t *self)
             };
             self->frs_write_offset = 0;
             return bno080_spi_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
-        }
-        else if (offset < write.length) {
+        } else if (offset < write.length) {
             // 1b. write data
             //
             const uint8_t command[] = {
@@ -222,12 +215,11 @@ STATIC int bno080_spi_frs(bno080_BNO080_obj_t *self)
                 0,                            // Reserved
                 LE_U16(offset),               // Offset to write to
                 LE_U32(write.data[offset]),   // Data 0
-                LE_U32(write.data[offset+1])  // Data 1
+                LE_U32(write.data[offset + 1])  // Data 1
             };
             self->frs_write_offset += 2;
             return bno080_spi_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
-        }
-        else {
+        } else {
             // 1c. wait for write to complete
             //
             return 0;
@@ -239,11 +231,11 @@ STATIC int bno080_spi_frs(bno080_BNO080_obj_t *self)
     if (self->frs_read < (int)ARRAY_SIZE(bno080_frs_ids)) {
         uint16_t frstype = bno080_frs_ids[self->frs_read];
         const uint8_t command[] = {
-                BNO080_FRS_READ_REQ,  // Report ID
-                0,                    // Reserved
-                0, 0,                 // Read Offset
-                LE_U16(frstype),      // FRS Type
-                0, 0                  // Block Size (0 == entire record)
+            BNO080_FRS_READ_REQ,      // Report ID
+            0,                        // Reserved
+            0, 0,                     // Read Offset
+            LE_U16(frstype),          // FRS Type
+            0, 0                      // Block Size (0 == entire record)
         };
         return bno080_spi_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
     }
@@ -251,27 +243,33 @@ STATIC int bno080_spi_frs(bno080_BNO080_obj_t *self)
     return 0;
 }
 
-STATIC int bno080_frs_save_index(bno080_frs_t *frs)
-{
-    if (frs->id == 0x3E2D && frs->offset == 0) return 0;
-    if (frs->id == 0x3E2D && frs->offset == 2) return 1;
-    if (frs->id == 0x3E2E && frs->offset == 0) return 2;
-    if (frs->id == 0x3E2E && frs->offset == 2) return 3;
+STATIC int bno080_frs_save_index(bno080_frs_t *frs) {
+    if (frs->id == 0x3E2D && frs->offset == 0) {
+        return 0;
+    }
+    if (frs->id == 0x3E2D && frs->offset == 2) {
+        return 1;
+    }
+    if (frs->id == 0x3E2E && frs->offset == 0) {
+        return 2;
+    }
+    if (frs->id == 0x3E2E && frs->offset == 2) {
+        return 3;
+    }
 
     return ENOMEM;
 }
 
-STATIC void bno080_read_frs(bno080_BNO080_obj_t *self, const uint8_t *buf, int len)
-{
-    uint8_t length_status = READ_LE(uint8_t, buf+1);
+STATIC void bno080_read_frs(bno080_BNO080_obj_t *self, const uint8_t *buf, int len) {
+    uint8_t length_status = READ_LE(uint8_t, buf + 1);
     uint8_t status = length_status & 0x0F;
 
     bno080_frs_t frs;
-    frs.id = READ_LE(uint16_t, buf+12);     // frs type
-    frs.offset = READ_LE(uint16_t, buf+2);  // offset
-    frs.data0 = READ_LE(uint32_t, buf+4);   // data0
-    frs.data1 = READ_LE(uint32_t, buf+8);   // data1
-    
+    frs.id = READ_LE(uint16_t, buf + 12);     // frs type
+    frs.offset = READ_LE(uint16_t, buf + 2);  // offset
+    frs.data0 = READ_LE(uint32_t, buf + 4);   // data0
+    frs.data1 = READ_LE(uint32_t, buf + 8);   // data1
+
     int save_idx = bno080_frs_save_index(&frs);
     if (save_idx >= 0) {
         self->frs_saved[save_idx] = frs;
@@ -285,9 +283,8 @@ STATIC void bno080_read_frs(bno080_BNO080_obj_t *self, const uint8_t *buf, int l
     }
 }
 
-STATIC void bno080_write_frs(bno080_BNO080_obj_t *self, const uint8_t *buf, int len)
-{
-    uint8_t status = READ_LE(uint8_t, buf+1);
+STATIC void bno080_write_frs(bno080_BNO080_obj_t *self, const uint8_t *buf, int len) {
+    uint8_t status = READ_LE(uint8_t, buf + 1);
 
     if (status == BNO080_FRS_WRITE_COMPLETE) {
         // if complete advance the pointer
@@ -297,146 +294,142 @@ STATIC void bno080_write_frs(bno080_BNO080_obj_t *self, const uint8_t *buf, int 
     bno080_spi_frs(self);
 }
 
-STATIC void bno080_feature_response(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len)
-{
+STATIC void bno080_feature_response(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len) {
     uint8_t feature_id = buf[1];
-    uint32_t rate = READ_LE(uint32_t, buf+5);
+    uint32_t rate = READ_LE(uint32_t, buf + 5);
     char *feature = (char *)"";
-    switch(feature_id) {
-    case BNO080_SRID_ACCELEROMETER:
-        feature = (char *)"ACCELEROMETER";
-        break;
-    case BNO080_SRID_GYROSCOPE:
-        feature = (char *)"GYROSCOPE";
-        break;
-    case BNO080_SRID_MAGNETIC_FIELD:
-        feature = (char *)"MAGNETIC_FIELD";
-        break;
-    case BNO080_SRID_LINEAR_ACCELERATION:
-        feature = (char *)"LINEAR_ACCELERATION";
-        break;
-    case BNO080_SRID_ROTATION_VECTOR:
-        feature = (char *)"ROTATION_VECTOR";
-        break;
-    case BNO080_SRID_GRAVITY:
-        feature = (char *)"GRAVITY";
-        break;
-    case BNO080_SRID_ARVR_ROTATION_VECTOR:
-        feature = (char *)"ARVR_ROTATION_VECTOR";
-        break;
-    case BNO080_SRID_ARVR_GAME_ROTATION_VECTOR:
-        feature = (char *)"ARVR_GAME_ROTATION_VECTOR";
-        break;
-    case BNO080_SRID_GYRO_INT_ROTATION_VECTOR:
-        feature = (char *)"GYRO_INT_ROTATION_VECTOR";
-        break;
-    case BNO080_SRID_GAME_ROTATION_VECTOR:
-        feature = (char *)"GAME_ROTATION VECTOR";
-        break;
-    case BNO080_SRID_UNCAL_GYROSCOPE:
-    case BNO080_SRID_GEOMAGNETIC_ROTATION_VECTOR:
-    case BNO080_SRID_TAP_DETECTOR:
-    case BNO080_SRID_STEP_COUNTER:
-    case BNO080_SRID_SIGNIFICANT_MOTION:
-    case BNO080_SRID_STABILITY_CLASSIFIER:
-    case BNO080_SRID_RAW_ACCELEROMETER:
-    case BNO080_SRID_RAW_GYROSCOPE:
-    case BNO080_SRID_RAW_MAGNETOMETER:
-    case BNO080_SRID_SAR:
-    case BNO080_SRID_STEP_DETECTOR:
-    case BNO080_SRID_SHAKE_DETECTOR:
-    case BNO080_SRID_FLIP_DETECTOR:
-    case BNO080_SRID_PICKUP_DETECTOR:
-    case BNO080_SRID_STABILITY_DETECTOR:
-    case BNO080_SRID_PERSONAL_ACTIVITY_CLASSIFIER:
-    case BNO080_SRID_SLEEP_DETECTOR:
-    case BNO080_SRID_TILT_DETECTOR:
-    case BNO080_SRID_POCKET_DETECTOR:
-    case BNO080_SRID_CIRCLE_DETECTOR:
-    case BNO080_SRID_HEART_RATE_MONITOR:
-    default:
-        feature = (char *)"UNKNOWN";
-        break;
+    switch (feature_id) {
+        case BNO080_SRID_ACCELEROMETER:
+            feature = (char *)"ACCELEROMETER";
+            break;
+        case BNO080_SRID_GYROSCOPE:
+            feature = (char *)"GYROSCOPE";
+            break;
+        case BNO080_SRID_MAGNETIC_FIELD:
+            feature = (char *)"MAGNETIC_FIELD";
+            break;
+        case BNO080_SRID_LINEAR_ACCELERATION:
+            feature = (char *)"LINEAR_ACCELERATION";
+            break;
+        case BNO080_SRID_ROTATION_VECTOR:
+            feature = (char *)"ROTATION_VECTOR";
+            break;
+        case BNO080_SRID_GRAVITY:
+            feature = (char *)"GRAVITY";
+            break;
+        case BNO080_SRID_ARVR_ROTATION_VECTOR:
+            feature = (char *)"ARVR_ROTATION_VECTOR";
+            break;
+        case BNO080_SRID_ARVR_GAME_ROTATION_VECTOR:
+            feature = (char *)"ARVR_GAME_ROTATION_VECTOR";
+            break;
+        case BNO080_SRID_GYRO_INT_ROTATION_VECTOR:
+            feature = (char *)"GYRO_INT_ROTATION_VECTOR";
+            break;
+        case BNO080_SRID_GAME_ROTATION_VECTOR:
+            feature = (char *)"GAME_ROTATION VECTOR";
+            break;
+        case BNO080_SRID_UNCAL_GYROSCOPE:
+        case BNO080_SRID_GEOMAGNETIC_ROTATION_VECTOR:
+        case BNO080_SRID_TAP_DETECTOR:
+        case BNO080_SRID_STEP_COUNTER:
+        case BNO080_SRID_SIGNIFICANT_MOTION:
+        case BNO080_SRID_STABILITY_CLASSIFIER:
+        case BNO080_SRID_RAW_ACCELEROMETER:
+        case BNO080_SRID_RAW_GYROSCOPE:
+        case BNO080_SRID_RAW_MAGNETOMETER:
+        case BNO080_SRID_SAR:
+        case BNO080_SRID_STEP_DETECTOR:
+        case BNO080_SRID_SHAKE_DETECTOR:
+        case BNO080_SRID_FLIP_DETECTOR:
+        case BNO080_SRID_PICKUP_DETECTOR:
+        case BNO080_SRID_STABILITY_DETECTOR:
+        case BNO080_SRID_PERSONAL_ACTIVITY_CLASSIFIER:
+        case BNO080_SRID_SLEEP_DETECTOR:
+        case BNO080_SRID_TILT_DETECTOR:
+        case BNO080_SRID_POCKET_DETECTOR:
+        case BNO080_SRID_CIRCLE_DETECTOR:
+        case BNO080_SRID_HEART_RATE_MONITOR:
+        default:
+            feature = (char *)"UNKNOWN";
+            break;
     }
 
     mp_printf(&mp_plat_print, "Feature %s : %ld\n", feature, rate);
 }
 
-STATIC void bno080_command_response(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len)
-{
+STATIC void bno080_command_response(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len) {
     uint8_t command_id = buf[2];
     char *command = (char *)"";
     uint8_t status = buf[5];
-    
-    switch(command_id) {
-    case BNO080_COMMAND_ERRORS:
-        command = (char *)"ERRORS";
-        break;
-    case BNO080_COMMAND_COUNTER:
-        command = (char *)"COUNTER";
-        break;
-    case BNO080_COMMAND_TARE:
-        command = (char *)"TARE";
-        break;
-    case BNO080_COMMAND_INITIALIZE:
-        command = (char *)"INITIALIZE";
-        break;
-    case BNO080_COMMAND_INIT_STARTUP:
-        command = (char *)"INIT_STARTUP";
-        self->init_done = true;
-        break;
-    case BNO080_COMMAND_DCD_SAVE:
-        command = (char *)"DCD_SAVE";
-        break;
-    case BNO080_COMMAND_ME_CAL:
-        command = (char *)"ME_CAL";
-        break;
-    case BNO080_COMMAND_DCD_PERIODIC:
-        command = (char *)"DCD_PERIODIC";
-        break;
-    case BNO080_COMMAND_OSCILLATOR:
-        command = (char *)"OSCILLATOR";
-        break;
-    case BNO080_COMMAND_DCD_CLEAR:
-        command = (char *)"DCD_CLEAR";
-        break;
-    default:
-        command = (char *)"UNKNOWN";
-        break;
+
+    switch (command_id) {
+        case BNO080_COMMAND_ERRORS:
+            command = (char *)"ERRORS";
+            break;
+        case BNO080_COMMAND_COUNTER:
+            command = (char *)"COUNTER";
+            break;
+        case BNO080_COMMAND_TARE:
+            command = (char *)"TARE";
+            break;
+        case BNO080_COMMAND_INITIALIZE:
+            command = (char *)"INITIALIZE";
+            break;
+        case BNO080_COMMAND_INIT_STARTUP:
+            command = (char *)"INIT_STARTUP";
+            self->init_done = true;
+            break;
+        case BNO080_COMMAND_DCD_SAVE:
+            command = (char *)"DCD_SAVE";
+            break;
+        case BNO080_COMMAND_ME_CAL:
+            command = (char *)"ME_CAL";
+            break;
+        case BNO080_COMMAND_DCD_PERIODIC:
+            command = (char *)"DCD_PERIODIC";
+            break;
+        case BNO080_COMMAND_OSCILLATOR:
+            command = (char *)"OSCILLATOR";
+            break;
+        case BNO080_COMMAND_DCD_CLEAR:
+            command = (char *)"DCD_CLEAR";
+            break;
+        default:
+            command = (char *)"UNKNOWN";
+            break;
     }
-    
-    mp_printf(&mp_plat_print, "command response %s = %d\n", command, status);   
+
+    mp_printf(&mp_plat_print, "command response %s = %d\n", command, status);
 }
 
-STATIC void bno080_control(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len)
-{
+STATIC void bno080_control(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len) {
     uint8_t control_id = buf[0];
     switch (control_id) {
-    case BNO080_FRS_READ_RESP:
-        bno080_read_frs(self, buf, len);
-        break;
-    case BNO080_FRS_WRITE_RESP:
-        bno080_write_frs(self, buf, len);
-        break;
-    case BNO080_GET_FEATURE_RESPONSE:
-        bno080_feature_response(self, timestamp, buf, len);
-        break;
-    case BNO080_COMMAND_RESP:
-        bno080_command_response(self, timestamp, buf, len);
-        break;
-    case BNO080_PRODUCT_ID_RESPONSE:
-        bno080_pid_response(self, timestamp, buf, len);
-        break;
-    default:
-        mp_printf(&mp_plat_print, "unknown control %d\n", control_id);
-        break;
+        case BNO080_FRS_READ_RESP:
+            bno080_read_frs(self, buf, len);
+            break;
+        case BNO080_FRS_WRITE_RESP:
+            bno080_write_frs(self, buf, len);
+            break;
+        case BNO080_GET_FEATURE_RESPONSE:
+            bno080_feature_response(self, timestamp, buf, len);
+            break;
+        case BNO080_COMMAND_RESP:
+            bno080_command_response(self, timestamp, buf, len);
+            break;
+        case BNO080_PRODUCT_ID_RESPONSE:
+            bno080_pid_response(self, timestamp, buf, len);
+            break;
+        default:
+            mp_printf(&mp_plat_print, "unknown control %d\n", control_id);
+            break;
     }
 
     bno080_post_response(self, control_id);
 }
 
-STATIC void bno080_report_rotation(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
-{
+STATIC void bno080_report_rotation(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len) {
     /**
      * 6.5.42.2 Input Report
      *
@@ -459,14 +452,13 @@ STATIC void bno080_report_rotation(bno080_BNO080_obj_t *self, elapsed_t timestam
     // https://en.wikipedia.org/wiki/Q_(number_format)
     float scale = pow(2.0, -qp);
 
-    self->fquat[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale);  // i
-    self->fquat[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale);  // j
-    self->fquat[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale);  // k
-    self->fquat[3] = mp_obj_new_float(READ_LE(int16_t, &pkt[10])*scale);  // real
+    self->fquat[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4]) * scale);  // i
+    self->fquat[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6]) * scale);  // j
+    self->fquat[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8]) * scale);  // k
+    self->fquat[3] = mp_obj_new_float(READ_LE(int16_t, &pkt[10]) * scale);  // real
 }
 
-STATIC void bno080_report_accel(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
-{
+STATIC void bno080_report_accel(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len) {
     /**
      * 6.5.9.2 Accelerometer Input Report
      *
@@ -485,13 +477,12 @@ STATIC void bno080_report_accel(bno080_BNO080_obj_t *self, elapsed_t timestamp, 
     // https://en.wikipedia.org/wiki/Q_(number_format)
     float scale = pow(2.0, -qp);
 
-    self->accel[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
-    self->accel[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
-    self->accel[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+    self->accel[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4]) * scale); // x
+    self->accel[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6]) * scale); // y
+    self->accel[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8]) * scale); // z
 }
 
-STATIC void bno080_report_gyroscope(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int lens)
-{
+STATIC void bno080_report_gyroscope(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int lens) {
     /**
      * 6.5.13.2 Gyroscope Input Report
      *
@@ -509,13 +500,12 @@ STATIC void bno080_report_gyroscope(bno080_BNO080_obj_t *self, elapsed_t timesta
     uint8_t qp = 9;  /// per section 6.5.13 Q Point = 9
     float scale = pow(2.0, -qp);
 
-    self->gyro[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
-    self->gyro[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
-    self->gyro[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+    self->gyro[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4]) * scale); // x
+    self->gyro[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6]) * scale); // y
+    self->gyro[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8]) * scale); // z
 }
 
-STATIC void bno080_report_magnetic_field(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
-{
+STATIC void bno080_report_magnetic_field(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len) {
     /**
      * 6.5.16.2 Magnetic Field Input Report
      *
@@ -533,13 +523,12 @@ STATIC void bno080_report_magnetic_field(bno080_BNO080_obj_t *self, elapsed_t ti
     uint8_t qp = 4;  /// per section 6.5.16 Q Point = 4
     float scale = pow(2.0, -qp);
 
-    self->mag[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
-    self->mag[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
-    self->mag[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+    self->mag[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4]) * scale); // x
+    self->mag[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6]) * scale); // y
+    self->mag[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8]) * scale); // z
 }
 
-STATIC void bno080_report_grav(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
-{
+STATIC void bno080_report_grav(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len) {
     /**
     6.5.11.2 Input Report
     Byte Description
@@ -556,62 +545,60 @@ STATIC void bno080_report_grav(bno080_BNO080_obj_t *self, elapsed_t timestamp, c
     9 Gravity Axis Z MSB
     */
     /*
-    The gravity sensor reports gravity in the device’s coordinate frame. The units are m/s^2. The Q point is 8. 
+    The gravity sensor reports gravity in the device’s coordinate frame. The units are m/s^2. The Q point is 8.
     */
 
     uint8_t qp = 8;  /// per section 6.5.10 Q Point = 8
     // https://en.wikipedia.org/wiki/Q_(number_format)
     float scale = pow(2.0, -qp);
 
-    self->grav[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
-    self->grav[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
-    self->grav[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+    self->grav[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4]) * scale); // x
+    self->grav[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6]) * scale); // y
+    self->grav[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8]) * scale); // z
 }
 
-STATIC void bno080_report(bno080_BNO080_obj_t *self, elapsed_t timestamp, uint8_t accuracy, const uint8_t *buf, int len)
-{
+STATIC void bno080_report(bno080_BNO080_obj_t *self, elapsed_t timestamp, uint8_t accuracy, const uint8_t *buf, int len) {
     // currently all reports must start with base timestamp reference
     // ASSERT(buf[0] == BNO080_BASE_TIMESTAMP);
-    if(buf[0] != BNO080_BASE_TIMESTAMP){
+    if (buf[0] != BNO080_BASE_TIMESTAMP) {
         mp_printf(&mp_plat_print, "no timestamp found\n");
         return;
     }
 
     uint8_t report_id = buf[BNO080_SRID_OFFSET];
     switch (report_id) {
-    // rotation vectors all with Q point 14
-    case BNO080_SRID_ARVR_GAME_ROTATION_VECTOR:
-    case BNO080_SRID_ARVR_ROTATION_VECTOR:
-    case BNO080_SRID_GEOMAGNETIC_ROTATION_VECTOR:
-    case BNO080_SRID_GAME_ROTATION_VECTOR:
-    case BNO080_SRID_ROTATION_VECTOR:
-        bno080_report_rotation(self, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET);
-        break;
-    case BNO080_SRID_ACCELEROMETER:
-        bno080_report_accel(self, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET);
-        break;
-    case BNO080_SRID_GYROSCOPE:
-        bno080_report_gyroscope(self, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET);
-        break;
-    case BNO080_SRID_MAGNETIC_FIELD:
-        bno080_report_magnetic_field(self, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET);
-        break;
-    case BNO080_SRID_GRAVITY:
-        bno080_report_grav(self, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET);
-        break;
-    // IMU sensor values currently recorded raw
-    case BNO080_SRID_LINEAR_ACCELERATION:
-    case BNO080_SRID_UNCAL_GYROSCOPE:
-        break;
-    default:
-        // TRACE_BUF(buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET, "unknown report");
-        break;
+        // rotation vectors all with Q point 14
+        case BNO080_SRID_ARVR_GAME_ROTATION_VECTOR:
+        case BNO080_SRID_ARVR_ROTATION_VECTOR:
+        case BNO080_SRID_GEOMAGNETIC_ROTATION_VECTOR:
+        case BNO080_SRID_GAME_ROTATION_VECTOR:
+        case BNO080_SRID_ROTATION_VECTOR:
+            bno080_report_rotation(self, timestamp, buf + BNO080_SRID_OFFSET, len - BNO080_SRID_OFFSET);
+            break;
+        case BNO080_SRID_ACCELEROMETER:
+            bno080_report_accel(self, timestamp, buf + BNO080_SRID_OFFSET, len - BNO080_SRID_OFFSET);
+            break;
+        case BNO080_SRID_GYROSCOPE:
+            bno080_report_gyroscope(self, timestamp, buf + BNO080_SRID_OFFSET, len - BNO080_SRID_OFFSET);
+            break;
+        case BNO080_SRID_MAGNETIC_FIELD:
+            bno080_report_magnetic_field(self, timestamp, buf + BNO080_SRID_OFFSET, len - BNO080_SRID_OFFSET);
+            break;
+        case BNO080_SRID_GRAVITY:
+            bno080_report_grav(self, timestamp, buf + BNO080_SRID_OFFSET, len - BNO080_SRID_OFFSET);
+            break;
+        // IMU sensor values currently recorded raw
+        case BNO080_SRID_LINEAR_ACCELERATION:
+        case BNO080_SRID_UNCAL_GYROSCOPE:
+            break;
+        default:
+            // TRACE_BUF(buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET, "unknown report");
+            break;
     };
 
 }
 
-STATIC int bno080_on_read(bno080_BNO080_obj_t *self, elapsed_t timestamp, uint8_t *buf, int len)
-{
+STATIC int bno080_on_read(bno080_BNO080_obj_t *self, elapsed_t timestamp, uint8_t *buf, int len) {
     uint8_t channel = buf[2];
 
     switch (channel) {
@@ -619,8 +606,8 @@ STATIC int bno080_on_read(bno080_BNO080_obj_t *self, elapsed_t timestamp, uint8_
 
             // currently all sensor reports must start with base timestamp reference
             // if we implement batching this will no longer be true
-            // and we will need to handle the channel report seperate from sensor report
-            if(buf[BNO080_HEADER_SIZE] != BNO080_BASE_TIMESTAMP){
+            // and we will need to handle the channel report separate from sensor report
+            if (buf[BNO080_HEADER_SIZE] != BNO080_BASE_TIMESTAMP) {
                 mp_printf(&mp_plat_print, "BNO080_HEADER_SIZE != BNO080_BASE_TIMESTAMP\n");
                 return EINVAL;
             }
@@ -629,7 +616,7 @@ STATIC int bno080_on_read(bno080_BNO080_obj_t *self, elapsed_t timestamp, uint8_
             // relative to transport-defined reference point. Signed. Units are 100 microsecond ticks.
             // For example, if HINT occurs at some time t and the Base Timestamp Reference record has
             // a value for delta of 10, the timestamps in a given batch will be relative to t – 1 ms.
-            int32_t base_delta = READ_LE(int32_t, &buf[BNO080_HEADER_SIZE+BNO080_BASE_DELTA_OFFSET]);
+            int32_t base_delta = READ_LE(int32_t, &buf[BNO080_HEADER_SIZE + BNO080_BASE_DELTA_OFFSET]);
             timestamp -= base_delta;
 
             // 6.5.1 Common Fields
@@ -639,15 +626,15 @@ STATIC int bno080_on_read(bno080_BNO080_obj_t *self, elapsed_t timestamp, uint8_
             // Bits 7:2 – Delay upper bits: 6 most-significant bits of report delay. See below.
             // Delay LSB
             // 8 least-significant bits of report delay. Units are 100 us.
-            uint16_t status_delay = READ_LE(uint16_t, &buf[BNO080_HEADER_SIZE+BNO080_SRID_OFFSET+BNO080_STATUS_DELAY_OFFSET]);
+            uint16_t status_delay = READ_LE(uint16_t, &buf[BNO080_HEADER_SIZE + BNO080_SRID_OFFSET + BNO080_STATUS_DELAY_OFFSET]);
             //    uint8_t status = status_delay >> 14;
             uint16_t report_delay = status_delay & 0x3fff;
-            
-            uint8_t accuracy = READ_LE(uint8_t, &buf[BNO080_HEADER_SIZE+BNO080_SRID_OFFSET+BNO080_STATUS_DELAY_OFFSET]);
-            
+
+            uint8_t accuracy = READ_LE(uint8_t, &buf[BNO080_HEADER_SIZE + BNO080_SRID_OFFSET + BNO080_STATUS_DELAY_OFFSET]);
+
             timestamp += report_delay;
 
-            bno080_report(self, timestamp, accuracy, buf+BNO080_HEADER_SIZE, len-BNO080_HEADER_SIZE);
+            bno080_report(self, timestamp, accuracy, buf + BNO080_HEADER_SIZE, len - BNO080_HEADER_SIZE);
             break;
 
         case BNO080_CHANNEL_EXECUTE:
@@ -659,7 +646,7 @@ STATIC int bno080_on_read(bno080_BNO080_obj_t *self, elapsed_t timestamp, uint8_
 
         case BNO080_CHANNEL_COMMAND:
         case BNO080_CHANNEL_CONTROL:
-            bno080_control(self, timestamp, buf+BNO080_HEADER_SIZE, len-BNO080_HEADER_SIZE);
+            bno080_control(self, timestamp, buf + BNO080_HEADER_SIZE, len - BNO080_HEADER_SIZE);
             break;
         case BNO080_CHANNEL_WAKE:
         case BNO080_CHANNEL_GYRO:
@@ -669,8 +656,7 @@ STATIC int bno080_on_read(bno080_BNO080_obj_t *self, elapsed_t timestamp, uint8_
 
     return 0;
 }
-STATIC int bno080_txrx_spi(bno080_BNO080_obj_t *self, uint8_t **outbuf)
-{
+STATIC int bno080_txrx_spi(bno080_BNO080_obj_t *self, uint8_t **outbuf) {
     lock_bus(self);                           // select
     common_hal_digitalio_digitalinout_set_value(&self->cs, false);
     common_hal_digitalio_digitalinout_set_value(&self->ps0, true);
@@ -681,7 +667,7 @@ STATIC int bno080_txrx_spi(bno080_BNO080_obj_t *self, uint8_t **outbuf)
     // transact headers - 4 bytes each
     uint8_t *hobuf = self->txbuf;
     uint8_t *hibuf = self->rxbuf;
-    int holen = (txlen>=4) ? 4 : 0;
+    int holen = (txlen >= 4) ? 4 : 0;
     int hilen = 4;
     hilen = bno080_txrx(self, hobuf, hibuf, holen, hilen);
 
@@ -716,11 +702,10 @@ STATIC int bno080_txrx_spi(bno080_BNO080_obj_t *self, uint8_t **outbuf)
     common_hal_digitalio_digitalinout_set_value(&self->cs, true);
     unlock_bus(self);
 
-    return hilen+pilen;
+    return hilen + pilen;
 }
 
-STATIC int bno080_spi_sample(bno080_BNO080_obj_t *self)
-{
+STATIC int bno080_spi_sample(bno080_BNO080_obj_t *self) {
     // save timestamp before transfer
     elapsed_t timestamp = self->last_timestamp;
 
@@ -740,7 +725,7 @@ STATIC int bno080_spi_sample(bno080_BNO080_obj_t *self)
 
     uint8_t channel = buf[2];
     uint8_t seqnum = buf[3];
-    uint8_t expectedseq = self->read_seqnums[channel]+1;
+    uint8_t expectedseq = self->read_seqnums[channel] + 1;
     if (seqnum != expectedseq) {
         // DISABLED ONLY FOR FES BUILD - PLEASE REENABLE
         // LOG(ERROR, "[channel %d] expected seq %d, got %d", channel, expectedseq, seqnum);
@@ -750,13 +735,12 @@ STATIC int bno080_spi_sample(bno080_BNO080_obj_t *self)
     return bno080_on_read(self, timestamp, buf, len);
 }
 
-STATIC int bno080_read_pid(bno080_BNO080_obj_t *self)
-{
+STATIC int bno080_read_pid(bno080_BNO080_obj_t *self) {
     const uint8_t command[] = {
-        BNO080_PRODUCT_ID_REQUEST,  
+        BNO080_PRODUCT_ID_REQUEST,
         0,                          // Reserved
     };
-    
+
     bno080_spi_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
 
     bno080_wait_for_response(self, BNO080_PRODUCT_ID_RESPONSE);
@@ -769,7 +753,7 @@ STATIC void bno080_isr_recv(void *arg) {
     bno080_spi_sample(self);
 }
 
-void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj_t *bus, const mcu_pin_obj_t *cs, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *ps0, const mcu_pin_obj_t *bootn, const mcu_pin_obj_t *irq) {    
+void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj_t *bus, const mcu_pin_obj_t *cs, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *ps0, const mcu_pin_obj_t *bootn, const mcu_pin_obj_t *irq) {
     self->bus = bus;
     self->resp = 0;
     self->init_done = false;
@@ -790,7 +774,7 @@ void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj
 
     common_hal_bno080_BNO080_reset(self);
 
-    while(!self->init_done){
+    while (!self->init_done) {
         mp_handle_pending(true);
         // Allow user to break out of a timeout with a KeyboardInterrupt.
         if (mp_hal_is_interrupted()) {
@@ -800,11 +784,11 @@ void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj
 
     bno080_read_pid(self);
 
-    if(self->pid.id != BNO080_PRODUCT_ID_RESPONSE){
+    if (self->pid.id != BNO080_PRODUCT_ID_RESPONSE) {
         mp_raise_OSError(ENODEV);
         return;
     }
-    
+
     mp_printf(&mp_plat_print, "BNO id=%x found\n", self->pid.id);
     return;
 }
@@ -821,9 +805,8 @@ void common_hal_bno080_BNO080_reset(bno080_BNO080_obj_t *self) {
     memset(self->write_seqnums, 0x00, sizeof(self->write_seqnums));
 }
 
-STATIC void bno080_unary_rotation(bno080_BNO080_obj_t *self, uint8_t feature)
-{
-    switch(feature) {
+STATIC void bno080_unary_rotation(bno080_BNO080_obj_t *self, uint8_t feature) {
+    switch (feature) {
         case BNO080_SRID_ARVR_GAME_ROTATION_VECTOR:
         case BNO080_SRID_ARVR_ROTATION_VECTOR:
         case BNO080_SRID_GEOMAGNETIC_ROTATION_VECTOR:
@@ -849,26 +832,26 @@ int common_hal_bno080_BNO080_set_feature(bno080_BNO080_obj_t *self, uint8_t feat
         BNO080_SET_FEATURE_COMMAND,
         feature,
         flags,                 // flags
-        (sns >> 0)  & 0xFF,    // sensitivity LSB
-        (sns >> 8)  & 0xFF,    // sensitivity MSB
-        (refresh_us >> 0)   & 0xFF,    // us LSB
-        (refresh_us >> 8)   & 0xFF,    // us
-        (refresh_us >> 16)  & 0xFF,    // us
-        (refresh_us >> 24)  & 0xFF,    // us MSB
-        (batch_us >> 0)     & 0xFF,    // batch interval LSB
-        (batch_us >> 8)     & 0xFF,    // batch interval
-        (batch_us >> 16)    & 0xFF,    // batch interval
-        (batch_us >> 24)    & 0xFF,    // batch interval MSB
-        (cfg >> 0)  & 0xFF,    // config LSB
-        (cfg >> 8)  & 0xFF,    // config
+        (sns >> 0) & 0xFF,     // sensitivity LSB
+        (sns >> 8) & 0xFF,     // sensitivity MSB
+        (refresh_us >> 0) & 0xFF,      // us LSB
+        (refresh_us >> 8) & 0xFF,      // us
+        (refresh_us >> 16) & 0xFF,     // us
+        (refresh_us >> 24) & 0xFF,     // us MSB
+        (batch_us >> 0) & 0xFF,        // batch interval LSB
+        (batch_us >> 8) & 0xFF,        // batch interval
+        (batch_us >> 16) & 0xFF,       // batch interval
+        (batch_us >> 24) & 0xFF,       // batch interval MSB
+        (cfg >> 0) & 0xFF,     // config LSB
+        (cfg >> 8) & 0xFF,     // config
         (cfg >> 16) & 0xFF,    // config
         (cfg >> 24) & 0xFF     // config MSB
     };
 
     mp_printf(&mp_plat_print, "setting feature [%d] rate [%d]\n", feature, refresh_us);
     rc = bno080_spi_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
-    
-    if(rc){
+
+    if (rc) {
         mp_raise_OSError(rc);
     }
 
@@ -879,7 +862,7 @@ mp_obj_t common_hal_bno080_BNO080_read(bno080_BNO080_obj_t *self, uint8_t report
     // mp_obj_t fquat[QUAT_DIMENSION];
     // int rc = 0;
 
-    switch(report_id){
+    switch (report_id) {
         case BNO080_SRID_ARVR_GAME_ROTATION_VECTOR:
         case BNO080_SRID_ARVR_ROTATION_VECTOR:
         case BNO080_SRID_GEOMAGNETIC_ROTATION_VECTOR:
@@ -903,7 +886,7 @@ void common_hal_bno080_BNO080_deinit(bno080_BNO080_obj_t *self) {
     if (!self->bus) {
         return;
     }
-    
+
     self->bus = 0;
 
     common_hal_digitalio_digitalinout_deinit(&self->cs);

@@ -53,8 +53,7 @@ STATIC void unlock_bus(bno080i2c_BNO080I2C_obj_t *self) {
     common_hal_busio_i2c_unlock(self->bus);
 }
 
-STATIC void bno080i2c_post_response(bno080i2c_BNO080I2C_obj_t *self, uint8_t response_id)
-{
+STATIC void bno080i2c_post_response(bno080i2c_BNO080I2C_obj_t *self, uint8_t response_id) {
     self->resp = response_id;
 }
 
@@ -68,8 +67,7 @@ STATIC void bno080i2c_post_response(bno080i2c_BNO080I2C_obj_t *self, uint8_t res
  *
  * @returns        0 on success else ERROR
  */
-STATIC int bno080i2c_send(bno080i2c_BNO080I2C_obj_t *self, uint8_t channel, const uint8_t *buf, int len)
-{
+STATIC int bno080i2c_send(bno080i2c_BNO080I2C_obj_t *self, uint8_t channel, const uint8_t *buf, int len) {
     if (self->debug) {
         mp_printf(&mp_plat_print, "send_packet on channel %d\n", channel);
     }
@@ -80,13 +78,13 @@ STATIC int bno080i2c_send(bno080i2c_BNO080I2C_obj_t *self, uint8_t channel, cons
 
     uint8_t *txbuf = &self->txbuf[self->txlen];
 
-    txbuf[0] = len+4;
+    txbuf[0] = len + 4;
     txbuf[1] = 0;
     txbuf[2] = channel;
     txbuf[3] = self->write_seqnums[channel]++;
 
-    memcpy(txbuf+4, buf, len);
-    self->txlen += len+4;
+    memcpy(txbuf + 4, buf, len);
+    self->txlen += len + 4;
 
     // print time before write
     if (self->debug) {
@@ -101,19 +99,18 @@ STATIC int bno080i2c_send(bno080i2c_BNO080I2C_obj_t *self, uint8_t channel, cons
     return 0;
 }
 
-STATIC void bno080i2c_pid_response(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len)
-{
+STATIC void bno080i2c_pid_response(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len) {
     if (self->debug) {
         mp_printf(&mp_plat_print, "reading pid_response\n");
     }
 
     self->pid.id = READ_LE(uint8_t, buf);
-    self->pid.reset_cause = READ_LE(uint8_t, buf+1);
-    self->pid.sw_ver_major = READ_LE(uint8_t, buf+2);
-    self->pid.sw_ver_minor = READ_LE(uint8_t, buf+3);
-    self->pid.sw_part_number = READ_LE(uint32_t, buf+4);
-    self->pid.sw_build_number = READ_LE(uint32_t, buf+8);
-    self->pid.sw_version_patch = READ_LE(uint16_t, buf+12);
+    self->pid.reset_cause = READ_LE(uint8_t, buf + 1);
+    self->pid.sw_ver_major = READ_LE(uint8_t, buf + 2);
+    self->pid.sw_ver_minor = READ_LE(uint8_t, buf + 3);
+    self->pid.sw_part_number = READ_LE(uint32_t, buf + 4);
+    self->pid.sw_build_number = READ_LE(uint32_t, buf + 8);
+    self->pid.sw_version_patch = READ_LE(uint16_t, buf + 12);
 
     if (self->debug) {
         mp_printf(&mp_plat_print, "mpid.id %d\n", self->pid.id);
@@ -148,7 +145,7 @@ const uint16_t bno080i2c_frs_ids[] = {
     0x1AC9, // Environmental sensor - Humidity calibration
     0x39B1, // Environmental sensor - Ambient light calibration
     0x4DA2, // Environmental sensor - Proximity calibration
-    0xD401, // ALS Calibration
+    0xD401, // ALSO Calibration
     0xD402, // Proximity Sensor Calibration
     0xED85, // Stability detector configuration
     0x74B4, // User record
@@ -165,13 +162,12 @@ typedef struct frs_write_t {
 uint32_t bno080i2c_rotation_vector_config[] = { 0xccccccd, 0x410624e, 0x191eb852, 0x0 };
 
 const frs_write_t bno080i2c_frs_writes[] = {
-     // { frs_id, offset, data0, data1 }
-     { 0x3E2D, ARRAY_SIZE(bno080i2c_rotation_vector_config), bno080i2c_rotation_vector_config },
-     { 0x3E2E, ARRAY_SIZE(bno080i2c_rotation_vector_config), bno080i2c_rotation_vector_config }
+    // { frs_id, offset, data0, data1 }
+    { 0x3E2D, ARRAY_SIZE(bno080i2c_rotation_vector_config), bno080i2c_rotation_vector_config },
+    { 0x3E2E, ARRAY_SIZE(bno080i2c_rotation_vector_config), bno080i2c_rotation_vector_config }
 };
 
-STATIC int bno080i2c_i2c_frs(bno080i2c_BNO080I2C_obj_t *self)
-{
+STATIC int bno080i2c_i2c_frs(bno080i2c_BNO080I2C_obj_t *self) {
     // 1. write configurations
     //
     if (self->frs_write < (int)ARRAY_SIZE(bno080i2c_frs_writes)) {
@@ -188,8 +184,7 @@ STATIC int bno080i2c_i2c_frs(bno080i2c_BNO080I2C_obj_t *self)
             };
             self->frs_write_offset = 0;
             return bno080i2c_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
-        }
-        else if (offset < write.length) {
+        } else if (offset < write.length) {
             // 1b. write data
             //
             const uint8_t command[] = {
@@ -197,12 +192,11 @@ STATIC int bno080i2c_i2c_frs(bno080i2c_BNO080I2C_obj_t *self)
                 0,                            // Reserved
                 LE_U16(offset),               // Offset to write to
                 LE_U32(write.data[offset]),   // Data 0
-                LE_U32(write.data[offset+1])  // Data 1
+                LE_U32(write.data[offset + 1])  // Data 1
             };
             self->frs_write_offset += 2;
             return bno080i2c_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
-        }
-        else {
+        } else {
             // 1c. wait for write to complete
             //
             return 0;
@@ -214,11 +208,11 @@ STATIC int bno080i2c_i2c_frs(bno080i2c_BNO080I2C_obj_t *self)
     if (self->frs_read < (int)ARRAY_SIZE(bno080i2c_frs_ids)) {
         uint16_t frstype = bno080i2c_frs_ids[self->frs_read];
         const uint8_t command[] = {
-                BNO080_FRS_READ_REQ,  // Report ID
-                0,                    // Reserved
-                0, 0,                 // Read Offset
-                LE_U16(frstype),      // FRS Type
-                0, 0                  // Block Size (0 == entire record)
+            BNO080_FRS_READ_REQ,      // Report ID
+            0,                        // Reserved
+            0, 0,                     // Read Offset
+            LE_U16(frstype),          // FRS Type
+            0, 0                      // Block Size (0 == entire record)
         };
         return bno080i2c_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
     }
@@ -226,27 +220,33 @@ STATIC int bno080i2c_i2c_frs(bno080i2c_BNO080I2C_obj_t *self)
     return 0;
 }
 
-STATIC int bno080i2c_frs_save_index(bno080i2c_frs_t *frs)
-{
-    if (frs->id == 0x3E2D && frs->offset == 0) return 0;
-    if (frs->id == 0x3E2D && frs->offset == 2) return 1;
-    if (frs->id == 0x3E2E && frs->offset == 0) return 2;
-    if (frs->id == 0x3E2E && frs->offset == 2) return 3;
+STATIC int bno080i2c_frs_save_index(bno080i2c_frs_t *frs) {
+    if (frs->id == 0x3E2D && frs->offset == 0) {
+        return 0;
+    }
+    if (frs->id == 0x3E2D && frs->offset == 2) {
+        return 1;
+    }
+    if (frs->id == 0x3E2E && frs->offset == 0) {
+        return 2;
+    }
+    if (frs->id == 0x3E2E && frs->offset == 2) {
+        return 3;
+    }
 
     return ENOMEM;
 }
 
-STATIC void bno080i2c_read_frs(bno080i2c_BNO080I2C_obj_t *self, const uint8_t *buf, int len)
-{
-    uint8_t length_status = READ_LE(uint8_t, buf+1);
+STATIC void bno080i2c_read_frs(bno080i2c_BNO080I2C_obj_t *self, const uint8_t *buf, int len) {
+    uint8_t length_status = READ_LE(uint8_t, buf + 1);
     uint8_t status = length_status & 0x0F;
 
     bno080i2c_frs_t frs;
-    frs.id = READ_LE(uint16_t, buf+12);     // frs type
-    frs.offset = READ_LE(uint16_t, buf+2);  // offset
-    frs.data0 = READ_LE(uint32_t, buf+4);   // data0
-    frs.data1 = READ_LE(uint32_t, buf+8);   // data1
-    
+    frs.id = READ_LE(uint16_t, buf + 12);     // frs type
+    frs.offset = READ_LE(uint16_t, buf + 2);  // offset
+    frs.data0 = READ_LE(uint32_t, buf + 4);   // data0
+    frs.data1 = READ_LE(uint32_t, buf + 8);   // data1
+
     int save_idx = bno080i2c_frs_save_index(&frs);
     if (save_idx >= 0) {
         self->frs_saved[save_idx] = frs;
@@ -260,9 +260,8 @@ STATIC void bno080i2c_read_frs(bno080i2c_BNO080I2C_obj_t *self, const uint8_t *b
     }
 }
 
-STATIC void bno080i2c_write_frs(bno080i2c_BNO080I2C_obj_t *self, const uint8_t *buf, int len)
-{
-    uint8_t status = READ_LE(uint8_t, buf+1);
+STATIC void bno080i2c_write_frs(bno080i2c_BNO080I2C_obj_t *self, const uint8_t *buf, int len) {
+    uint8_t status = READ_LE(uint8_t, buf + 1);
 
     if (status == BNO080_FRS_WRITE_COMPLETE) {
         // if complete advance the pointer
@@ -272,112 +271,110 @@ STATIC void bno080i2c_write_frs(bno080i2c_BNO080I2C_obj_t *self, const uint8_t *
     bno080i2c_i2c_frs(self);
 }
 
-STATIC void bno080i2c_feature_response(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len)
-{
+STATIC void bno080i2c_feature_response(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len) {
     uint8_t feature_id = buf[1];
-    uint32_t rate = READ_LE(uint32_t, buf+5);
+    uint32_t rate = READ_LE(uint32_t, buf + 5);
     char *feature = (char *)"";
-    switch(feature_id) {
-    case BNO080_SRID_ACCELEROMETER:
-        feature = (char *)"ACCELEROMETER";
-        break;
-    case BNO080_SRID_GYROSCOPE:
-        feature = (char *)"GYROSCOPE";
-        break;
-    case BNO080_SRID_MAGNETIC_FIELD:
-        feature = (char *)"MAGNETIC_FIELD";
-        break;
-    case BNO080_SRID_LINEAR_ACCELERATION:
-        feature = (char *)"LINEAR_ACCELERATION";
-        break;
-    case BNO080_SRID_ROTATION_VECTOR:
-        feature = (char *)"ROTATION_VECTOR";
-        break;
-    case BNO080_SRID_GRAVITY:
-        feature = (char *)"GRAVITY";
-        break;
-    case BNO080_SRID_ARVR_ROTATION_VECTOR:
-        feature = (char *)"ARVR_ROTATION_VECTOR";
-        break;
-    case BNO080_SRID_ARVR_GAME_ROTATION_VECTOR:
-        feature = (char *)"ARVR_GAME_ROTATION_VECTOR";
-        break;
-    case BNO080_SRID_GYRO_INT_ROTATION_VECTOR:
-        feature = (char *)"GYRO_INT_ROTATION_VECTOR";
-        break;
-    case BNO080_SRID_GAME_ROTATION_VECTOR:
-        feature = (char *)"GAME_ROTATION VECTOR";
-        break;
-    case BNO080_SRID_UNCAL_GYROSCOPE:
-    case BNO080_SRID_GEOMAGNETIC_ROTATION_VECTOR:
-    case BNO080_SRID_TAP_DETECTOR:
-    case BNO080_SRID_STEP_COUNTER:
-    case BNO080_SRID_SIGNIFICANT_MOTION:
-    case BNO080_SRID_STABILITY_CLASSIFIER:
-    case BNO080_SRID_RAW_ACCELEROMETER:
-    case BNO080_SRID_RAW_GYROSCOPE:
-    case BNO080_SRID_RAW_MAGNETOMETER:
-    case BNO080_SRID_SAR:
-    case BNO080_SRID_STEP_DETECTOR:
-    case BNO080_SRID_SHAKE_DETECTOR:
-    case BNO080_SRID_FLIP_DETECTOR:
-    case BNO080_SRID_PICKUP_DETECTOR:
-    case BNO080_SRID_STABILITY_DETECTOR:
-    case BNO080_SRID_PERSONAL_ACTIVITY_CLASSIFIER:
-    case BNO080_SRID_SLEEP_DETECTOR:
-    case BNO080_SRID_TILT_DETECTOR:
-    case BNO080_SRID_POCKET_DETECTOR:
-    case BNO080_SRID_CIRCLE_DETECTOR:
-    case BNO080_SRID_HEART_RATE_MONITOR:
-    default:
-        feature = (char *)"UNKNOWN";
-        break;
+    switch (feature_id) {
+        case BNO080_SRID_ACCELEROMETER:
+            feature = (char *)"ACCELEROMETER";
+            break;
+        case BNO080_SRID_GYROSCOPE:
+            feature = (char *)"GYROSCOPE";
+            break;
+        case BNO080_SRID_MAGNETIC_FIELD:
+            feature = (char *)"MAGNETIC_FIELD";
+            break;
+        case BNO080_SRID_LINEAR_ACCELERATION:
+            feature = (char *)"LINEAR_ACCELERATION";
+            break;
+        case BNO080_SRID_ROTATION_VECTOR:
+            feature = (char *)"ROTATION_VECTOR";
+            break;
+        case BNO080_SRID_GRAVITY:
+            feature = (char *)"GRAVITY";
+            break;
+        case BNO080_SRID_ARVR_ROTATION_VECTOR:
+            feature = (char *)"ARVR_ROTATION_VECTOR";
+            break;
+        case BNO080_SRID_ARVR_GAME_ROTATION_VECTOR:
+            feature = (char *)"ARVR_GAME_ROTATION_VECTOR";
+            break;
+        case BNO080_SRID_GYRO_INT_ROTATION_VECTOR:
+            feature = (char *)"GYRO_INT_ROTATION_VECTOR";
+            break;
+        case BNO080_SRID_GAME_ROTATION_VECTOR:
+            feature = (char *)"GAME_ROTATION VECTOR";
+            break;
+        case BNO080_SRID_UNCAL_GYROSCOPE:
+        case BNO080_SRID_GEOMAGNETIC_ROTATION_VECTOR:
+        case BNO080_SRID_TAP_DETECTOR:
+        case BNO080_SRID_STEP_COUNTER:
+        case BNO080_SRID_SIGNIFICANT_MOTION:
+        case BNO080_SRID_STABILITY_CLASSIFIER:
+        case BNO080_SRID_RAW_ACCELEROMETER:
+        case BNO080_SRID_RAW_GYROSCOPE:
+        case BNO080_SRID_RAW_MAGNETOMETER:
+        case BNO080_SRID_SAR:
+        case BNO080_SRID_STEP_DETECTOR:
+        case BNO080_SRID_SHAKE_DETECTOR:
+        case BNO080_SRID_FLIP_DETECTOR:
+        case BNO080_SRID_PICKUP_DETECTOR:
+        case BNO080_SRID_STABILITY_DETECTOR:
+        case BNO080_SRID_PERSONAL_ACTIVITY_CLASSIFIER:
+        case BNO080_SRID_SLEEP_DETECTOR:
+        case BNO080_SRID_TILT_DETECTOR:
+        case BNO080_SRID_POCKET_DETECTOR:
+        case BNO080_SRID_CIRCLE_DETECTOR:
+        case BNO080_SRID_HEART_RATE_MONITOR:
+        default:
+            feature = (char *)"UNKNOWN";
+            break;
     }
 
     mp_printf(&mp_plat_print, "Feature %s : %ld\n", feature, rate);
 }
 
-STATIC void bno080i2c_command_response(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len)
-{
+STATIC void bno080i2c_command_response(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len) {
     uint8_t command_id = buf[2];
     char *command = (char *)"";
     uint8_t status = buf[5];
-    
-    switch(command_id) {
-    case BNO080_COMMAND_ERRORS:
-        command = (char *)"ERRORS";
-        break;
-    case BNO080_COMMAND_COUNTER:
-        command = (char *)"COUNTER";
-        break;
-    case BNO080_COMMAND_TARE:
-        command = (char *)"TARE";
-        break;
-    case BNO080_COMMAND_INITIALIZE:
-        command = (char *)"INITIALIZE";
-        break;
-    case BNO080_COMMAND_INIT_STARTUP:
-        command = (char *)"INIT_STARTUP";
-        self->init_done = true;
-        break;
-    case BNO080_COMMAND_DCD_SAVE:
-        command = (char *)"DCD_SAVE";
-        break;
-    case BNO080_COMMAND_ME_CAL:
-        command = (char *)"ME_CAL";
-        break;
-    case BNO080_COMMAND_DCD_PERIODIC:
-        command = (char *)"DCD_PERIODIC";
-        break;
-    case BNO080_COMMAND_OSCILLATOR:
-        command = (char *)"OSCILLATOR";
-        break;
-    case BNO080_COMMAND_DCD_CLEAR:
-        command = (char *)"DCD_CLEAR";
-        break;
-    default:
-        command = (char *)"UNKNOWN";
-        break;
+
+    switch (command_id) {
+        case BNO080_COMMAND_ERRORS:
+            command = (char *)"ERRORS";
+            break;
+        case BNO080_COMMAND_COUNTER:
+            command = (char *)"COUNTER";
+            break;
+        case BNO080_COMMAND_TARE:
+            command = (char *)"TARE";
+            break;
+        case BNO080_COMMAND_INITIALIZE:
+            command = (char *)"INITIALIZE";
+            break;
+        case BNO080_COMMAND_INIT_STARTUP:
+            command = (char *)"INIT_STARTUP";
+            self->init_done = true;
+            break;
+        case BNO080_COMMAND_DCD_SAVE:
+            command = (char *)"DCD_SAVE";
+            break;
+        case BNO080_COMMAND_ME_CAL:
+            command = (char *)"ME_CAL";
+            break;
+        case BNO080_COMMAND_DCD_PERIODIC:
+            command = (char *)"DCD_PERIODIC";
+            break;
+        case BNO080_COMMAND_OSCILLATOR:
+            command = (char *)"OSCILLATOR";
+            break;
+        case BNO080_COMMAND_DCD_CLEAR:
+            command = (char *)"DCD_CLEAR";
+            break;
+        default:
+            command = (char *)"UNKNOWN";
+            break;
     }
 
     if (self->debug) {
@@ -385,41 +382,39 @@ STATIC void bno080i2c_command_response(bno080i2c_BNO080I2C_obj_t *self, elapsed_
     }
 }
 
-STATIC void bno080i2c_control(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len)
-{
+STATIC void bno080i2c_control(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *buf, int len) {
     uint8_t control_id = buf[0];
     switch (control_id) {
-    case BNO080_FRS_READ_RESP:
-        bno080i2c_read_frs(self, buf, len);
-        break;
-    case BNO080_FRS_WRITE_RESP:
-        bno080i2c_write_frs(self, buf, len);
-        break;
-    case BNO080_GET_FEATURE_RESPONSE:
-        bno080i2c_feature_response(self, timestamp, buf, len);
-        break;
-    case BNO080_COMMAND_RESP:
-        if (self->debug) {
-            mp_printf(&mp_plat_print, "command response\n");
-        }
-        bno080i2c_command_response(self, timestamp, buf, len);
-        break;
-    case BNO080_PRODUCT_ID_RESPONSE:
-        if (self->debug) {
-            mp_printf(&mp_plat_print, "pid response\n");
-        }
-        bno080i2c_pid_response(self, timestamp, buf, len);
-        break;
-    default:
-        mp_printf(&mp_plat_print, "unknown control %d\n", control_id);
-        break;
+        case BNO080_FRS_READ_RESP:
+            bno080i2c_read_frs(self, buf, len);
+            break;
+        case BNO080_FRS_WRITE_RESP:
+            bno080i2c_write_frs(self, buf, len);
+            break;
+        case BNO080_GET_FEATURE_RESPONSE:
+            bno080i2c_feature_response(self, timestamp, buf, len);
+            break;
+        case BNO080_COMMAND_RESP:
+            if (self->debug) {
+                mp_printf(&mp_plat_print, "command response\n");
+            }
+            bno080i2c_command_response(self, timestamp, buf, len);
+            break;
+        case BNO080_PRODUCT_ID_RESPONSE:
+            if (self->debug) {
+                mp_printf(&mp_plat_print, "pid response\n");
+            }
+            bno080i2c_pid_response(self, timestamp, buf, len);
+            break;
+        default:
+            mp_printf(&mp_plat_print, "unknown control %d\n", control_id);
+            break;
     }
 
     bno080i2c_post_response(self, control_id);
 }
 
-STATIC void bno080i2c_report_rotation(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
-{
+STATIC void bno080i2c_report_rotation(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len) {
     /**
      * 6.5.42.2 Input Report
      *
@@ -442,10 +437,10 @@ STATIC void bno080i2c_report_rotation(bno080i2c_BNO080I2C_obj_t *self, elapsed_t
     // https://en.wikipedia.org/wiki/Q_(number_format)
     float scale = pow(2.0, -qp);
 
-    self->fquat[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale);  // i
-    self->fquat[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale);  // j
-    self->fquat[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale);  // k
-    self->fquat[3] = mp_obj_new_float(READ_LE(int16_t, &pkt[10])*scale);  // real
+    self->fquat[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4]) * scale);  // i
+    self->fquat[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6]) * scale);  // j
+    self->fquat[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8]) * scale);  // k
+    self->fquat[3] = mp_obj_new_float(READ_LE(int16_t, &pkt[10]) * scale);  // real
 
     if (self->debug) {
         mp_printf(&mp_plat_print, "updated quat\n");
@@ -453,8 +448,7 @@ STATIC void bno080i2c_report_rotation(bno080i2c_BNO080I2C_obj_t *self, elapsed_t
     self->quat_recvd = true;
 }
 
-STATIC void bno080i2c_report_accel(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
-{
+STATIC void bno080i2c_report_accel(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len) {
     /**
      * 6.5.9.2 Accelerometer Input Report
      *
@@ -473,9 +467,9 @@ STATIC void bno080i2c_report_accel(bno080i2c_BNO080I2C_obj_t *self, elapsed_t ti
     // https://en.wikipedia.org/wiki/Q_(number_format)
     float scale = pow(2.0, -qp);
 
-    self->accel[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
-    self->accel[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
-    self->accel[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+    self->accel[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4]) * scale); // x
+    self->accel[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6]) * scale); // y
+    self->accel[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8]) * scale); // z
 
     if (self->debug) {
         mp_printf(&mp_plat_print, "updated accel\n");
@@ -483,8 +477,7 @@ STATIC void bno080i2c_report_accel(bno080i2c_BNO080I2C_obj_t *self, elapsed_t ti
     self->accel_recvd = true;
 }
 
-STATIC void bno080i2c_report_gyroscope(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int lens)
-{
+STATIC void bno080i2c_report_gyroscope(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int lens) {
     /**
      * 6.5.13.2 Gyroscope Input Report
      *
@@ -502,9 +495,9 @@ STATIC void bno080i2c_report_gyroscope(bno080i2c_BNO080I2C_obj_t *self, elapsed_
     uint8_t qp = 9;  /// per section 6.5.13 Q Point = 9
     float scale = pow(2.0, -qp);
 
-    self->gyro[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
-    self->gyro[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
-    self->gyro[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+    self->gyro[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4]) * scale); // x
+    self->gyro[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6]) * scale); // y
+    self->gyro[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8]) * scale); // z
 
     if (self->debug) {
         mp_printf(&mp_plat_print, "updated gyro\n");
@@ -512,8 +505,7 @@ STATIC void bno080i2c_report_gyroscope(bno080i2c_BNO080I2C_obj_t *self, elapsed_
     self->gyro_recvd = true;
 }
 
-STATIC void bno080i2c_report_magnetic_field(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
-{
+STATIC void bno080i2c_report_magnetic_field(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len) {
     /**
      * 6.5.16.2 Magnetic Field Input Report
      *
@@ -531,13 +523,12 @@ STATIC void bno080i2c_report_magnetic_field(bno080i2c_BNO080I2C_obj_t *self, ela
     uint8_t qp = 4;  /// per section 6.5.16 Q Point = 4
     float scale = pow(2.0, -qp);
 
-    self->mag[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
-    self->mag[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
-    self->mag[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+    self->mag[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4]) * scale); // x
+    self->mag[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6]) * scale); // y
+    self->mag[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8]) * scale); // z
 }
 
-STATIC void bno080i2c_report_grav(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len)
-{
+STATIC void bno080i2c_report_grav(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len) {
     /**
     6.5.11.2 Input Report
     Byte Description
@@ -554,23 +545,22 @@ STATIC void bno080i2c_report_grav(bno080i2c_BNO080I2C_obj_t *self, elapsed_t tim
     9 Gravity Axis Z MSB
     */
     /*
-    The gravity sensor reports gravity in the device’s coordinate frame. The units are m/s^2. The Q point is 8. 
+    The gravity sensor reports gravity in the device’s coordinate frame. The units are m/s^2. The Q point is 8.
     */
 
     uint8_t qp = 8;  /// per section 6.5.10 Q Point = 8
     // https://en.wikipedia.org/wiki/Q_(number_format)
     float scale = pow(2.0, -qp);
 
-    self->grav[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4])*scale); // x
-    self->grav[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6])*scale); // y
-    self->grav[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8])*scale); // z
+    self->grav[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4]) * scale); // x
+    self->grav[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6]) * scale); // y
+    self->grav[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8]) * scale); // z
 }
 
-STATIC void bno080i2c_report(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, uint8_t accuracy, const uint8_t *buf, int len)
-{
+STATIC void bno080i2c_report(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, uint8_t accuracy, const uint8_t *buf, int len) {
     // currently all reports must start with base timestamp reference
     // ASSERT(buf[0] == BNO080_BASE_TIMESTAMP);
-    if(buf[0] != BNO080_BASE_TIMESTAMP){
+    if (buf[0] != BNO080_BASE_TIMESTAMP) {
         mp_printf(&mp_plat_print, "no timestamp found\n");
         return;
     }
@@ -579,39 +569,38 @@ STATIC void bno080i2c_report(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestam
     self->last_report = report_id;
 
     switch (report_id) {
-    // rotation vectors all with Q point 14
-    case BNO080_SRID_ARVR_GAME_ROTATION_VECTOR:
-    case BNO080_SRID_ARVR_ROTATION_VECTOR:
-    case BNO080_SRID_GEOMAGNETIC_ROTATION_VECTOR:
-    case BNO080_SRID_GAME_ROTATION_VECTOR:
-    case BNO080_SRID_ROTATION_VECTOR:
-        bno080i2c_report_rotation(self, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET);
-        break;
-    case BNO080_SRID_ACCELEROMETER:
-        bno080i2c_report_accel(self, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET);
-        break;
-    case BNO080_SRID_GYROSCOPE:
-        bno080i2c_report_gyroscope(self, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET);
-        break;
-    case BNO080_SRID_MAGNETIC_FIELD:
-        bno080i2c_report_magnetic_field(self, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET);
-        break;
-    case BNO080_SRID_GRAVITY:
-        bno080i2c_report_grav(self, timestamp, buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET);
-        break;
-    // IMU sensor values currently recorded raw
-    case BNO080_SRID_LINEAR_ACCELERATION:
-    case BNO080_SRID_UNCAL_GYROSCOPE:
-        break;
-    default:
-        // TRACE_BUF(buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET, "unknown report");
-        break;
+        // rotation vectors all with Q point 14
+        case BNO080_SRID_ARVR_GAME_ROTATION_VECTOR:
+        case BNO080_SRID_ARVR_ROTATION_VECTOR:
+        case BNO080_SRID_GEOMAGNETIC_ROTATION_VECTOR:
+        case BNO080_SRID_GAME_ROTATION_VECTOR:
+        case BNO080_SRID_ROTATION_VECTOR:
+            bno080i2c_report_rotation(self, timestamp, buf + BNO080_SRID_OFFSET, len - BNO080_SRID_OFFSET);
+            break;
+        case BNO080_SRID_ACCELEROMETER:
+            bno080i2c_report_accel(self, timestamp, buf + BNO080_SRID_OFFSET, len - BNO080_SRID_OFFSET);
+            break;
+        case BNO080_SRID_GYROSCOPE:
+            bno080i2c_report_gyroscope(self, timestamp, buf + BNO080_SRID_OFFSET, len - BNO080_SRID_OFFSET);
+            break;
+        case BNO080_SRID_MAGNETIC_FIELD:
+            bno080i2c_report_magnetic_field(self, timestamp, buf + BNO080_SRID_OFFSET, len - BNO080_SRID_OFFSET);
+            break;
+        case BNO080_SRID_GRAVITY:
+            bno080i2c_report_grav(self, timestamp, buf + BNO080_SRID_OFFSET, len - BNO080_SRID_OFFSET);
+            break;
+        // IMU sensor values currently recorded raw
+        case BNO080_SRID_LINEAR_ACCELERATION:
+        case BNO080_SRID_UNCAL_GYROSCOPE:
+            break;
+        default:
+            // TRACE_BUF(buf+BNO080_SRID_OFFSET, len-BNO080_SRID_OFFSET, "unknown report");
+            break;
     };
 
 }
 
-STATIC int bno080i2c_on_read(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, uint8_t *buf, int len)
-{
+STATIC int bno080i2c_on_read(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestamp, uint8_t *buf, int len) {
     uint8_t channel = buf[2];
 
     switch (channel) {
@@ -622,7 +611,7 @@ STATIC int bno080i2c_on_read(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestam
 
             // currently all sensor reports must start with base timestamp reference
             // if we implement batching this will no longer be true
-            // and we will need to handle the channel report seperate from sensor report
+            // and we will need to handle the channel report separate from sensor report
             // if(buf[BNO080_HEADER_SIZE] != BNO080_BASE_TIMESTAMP){
             //     mp_printf(&mp_plat_print, "BNO080_HEADER_SIZE != BNO080_BASE_TIMESTAMP\n");
             //     return EINVAL;
@@ -632,7 +621,7 @@ STATIC int bno080i2c_on_read(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestam
             // relative to transport-defined reference point. Signed. Units are 100 microsecond ticks.
             // For example, if HINT occurs at some time t and the Base Timestamp Reference record has
             // a value for delta of 10, the timestamps in a given batch will be relative to t – 1 ms.
-            int32_t base_delta = READ_LE(int32_t, &buf[BNO080_HEADER_SIZE+BNO080_BASE_DELTA_OFFSET]);
+            int32_t base_delta = READ_LE(int32_t, &buf[BNO080_HEADER_SIZE + BNO080_BASE_DELTA_OFFSET]);
             timestamp -= base_delta;
 
             // 6.5.1 Common Fields
@@ -642,15 +631,15 @@ STATIC int bno080i2c_on_read(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestam
             // Bits 7:2 – Delay upper bits: 6 most-significant bits of report delay. See below.
             // Delay LSB
             // 8 least-significant bits of report delay. Units are 100 us.
-            uint16_t status_delay = READ_LE(uint16_t, &buf[BNO080_HEADER_SIZE+BNO080_SRID_OFFSET+BNO080_STATUS_DELAY_OFFSET]);
+            uint16_t status_delay = READ_LE(uint16_t, &buf[BNO080_HEADER_SIZE + BNO080_SRID_OFFSET + BNO080_STATUS_DELAY_OFFSET]);
             //    uint8_t status = status_delay >> 14;
             uint16_t report_delay = status_delay & 0x3fff;
-            
-            uint8_t accuracy = READ_LE(uint8_t, &buf[BNO080_HEADER_SIZE+BNO080_SRID_OFFSET+BNO080_STATUS_DELAY_OFFSET]);
-            
+
+            uint8_t accuracy = READ_LE(uint8_t, &buf[BNO080_HEADER_SIZE + BNO080_SRID_OFFSET + BNO080_STATUS_DELAY_OFFSET]);
+
             timestamp += report_delay;
 
-            bno080i2c_report(self, timestamp, accuracy, buf+BNO080_HEADER_SIZE, len-BNO080_HEADER_SIZE);
+            bno080i2c_report(self, timestamp, accuracy, buf + BNO080_HEADER_SIZE, len - BNO080_HEADER_SIZE);
             break;
 
         case BNO080_CHANNEL_EXECUTE:
@@ -665,7 +654,7 @@ STATIC int bno080i2c_on_read(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestam
             if (self->debug) {
                 mp_printf(&mp_plat_print, "control channel\n");
             }
-            bno080i2c_control(self, timestamp, buf+BNO080_HEADER_SIZE, len-BNO080_HEADER_SIZE);
+            bno080i2c_control(self, timestamp, buf + BNO080_HEADER_SIZE, len - BNO080_HEADER_SIZE);
             break;
         case BNO080_CHANNEL_WAKE:
         case BNO080_CHANNEL_GYRO:
@@ -675,8 +664,7 @@ STATIC int bno080i2c_on_read(bno080i2c_BNO080I2C_obj_t *self, elapsed_t timestam
 
     return 0;
 }
-STATIC int bno080i2c_recv(bno080i2c_BNO080I2C_obj_t *self, uint8_t *buf, int len)
-{
+STATIC int bno080i2c_recv(bno080i2c_BNO080I2C_obj_t *self, uint8_t *buf, int len) {
     if (len <= 0) {
         mp_printf(&mp_plat_print, "BNO called with nothing to do\n");
         return len;
@@ -704,13 +692,12 @@ STATIC int bno080i2c_recv(bno080i2c_BNO080I2C_obj_t *self, uint8_t *buf, int len
 
     common_hal_busio_i2c_read(self->bus, self->addr, buf, rxlen);
     // mp_printf(&mp_plat_print, "after i2c read: %d\n", mp_hal_ticks_ms());
- 
-    
+
+
     return rxlen;
 }
 
-STATIC int bno080i2c_sample(bno080i2c_BNO080I2C_obj_t *self)
-{
+STATIC int bno080i2c_sample(bno080i2c_BNO080I2C_obj_t *self) {
     if (self->debug) {
         mp_printf(&mp_plat_print, "sample\n");
     }
@@ -738,7 +725,7 @@ STATIC int bno080i2c_sample(bno080i2c_BNO080I2C_obj_t *self)
 
     uint8_t channel = buf[2];
     uint8_t seqnum = buf[3];
-    uint8_t expectedseq = self->read_seqnums[channel]+2;
+    uint8_t expectedseq = self->read_seqnums[channel] + 2;
     if (seqnum != expectedseq) {
         mp_printf(&mp_plat_print, "expected seq %d, got %d\n", expectedseq, seqnum);
         // DISABLED ONLY FOR FES BUILD - PLEASE REENABLE
@@ -749,18 +736,17 @@ STATIC int bno080i2c_sample(bno080i2c_BNO080I2C_obj_t *self)
     return bno080i2c_on_read(self, timestamp, buf, len);
 }
 
-STATIC int bno080i2c_read_pid(bno080i2c_BNO080I2C_obj_t *self)
-{
+STATIC int bno080i2c_read_pid(bno080i2c_BNO080I2C_obj_t *self) {
     const uint8_t command[] = {
-        BNO080_PRODUCT_ID_REQUEST,  
+        BNO080_PRODUCT_ID_REQUEST,
         0,                          // Reserved
     };
-    
+
     bno080i2c_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
     return 0;
 }
 
-void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, busio_i2c_obj_t *bus, const int8_t addr, bool debug) { 
+void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, busio_i2c_obj_t *bus, const int8_t addr, bool debug) {
     // print that construct is being called
     if (self->debug) {
         mp_printf(&mp_plat_print, "hal construct called\n");
@@ -772,7 +758,7 @@ void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, b
     self->addr = addr;
     self->debug = debug;
     self->calibration_complete = false;
-    
+
     // self->quat_buf = NULL;
     // self->accel_buf = NULL;
     // self->gyro_buf = NULL;
@@ -800,7 +786,7 @@ void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, b
         }
         mp_hal_delay_ms(250);
     }
-    
+
     mp_printf(&mp_plat_print, "BNO id=%x found\n", self->pid.id);
 
     return;
@@ -837,9 +823,8 @@ void common_hal_bno080i2c_BNO080I2C_soft_reset(bno080i2c_BNO080I2C_obj_t *self) 
     }
 }
 
-STATIC void bno080i2c_unary_rotation(bno080i2c_BNO080I2C_obj_t *self, uint8_t feature)
-{
-    switch(feature) {
+STATIC void bno080i2c_unary_rotation(bno080i2c_BNO080I2C_obj_t *self, uint8_t feature) {
+    switch (feature) {
         case BNO080_SRID_ARVR_GAME_ROTATION_VECTOR:
         case BNO080_SRID_ARVR_ROTATION_VECTOR:
         case BNO080_SRID_GEOMAGNETIC_ROTATION_VECTOR:
@@ -867,18 +852,18 @@ int common_hal_bno080i2c_BNO080I2C_set_feature(bno080i2c_BNO080I2C_obj_t *self, 
         BNO080_SET_FEATURE_COMMAND,
         feature,
         flags,                 // flags
-        (sns >> 0)  & 0xFF,    // sensitivity LSB
-        (sns >> 8)  & 0xFF,    // sensitivity MSB
-        (refresh_us >> 0)   & 0xFF,    // us LSB
-        (refresh_us >> 8)   & 0xFF,    // us
-        (refresh_us >> 16)  & 0xFF,    // us
-        (refresh_us >> 24)  & 0xFF,    // us MSB
-        (batch_us >> 0)     & 0xFF,    // batch interval LSB
-        (batch_us >> 8)     & 0xFF,    // batch interval
-        (batch_us >> 16)    & 0xFF,    // batch interval
-        (batch_us >> 24)    & 0xFF,    // batch interval MSB
-        (cfg >> 0)  & 0xFF,    // config LSB
-        (cfg >> 8)  & 0xFF,    // config
+        (sns >> 0) & 0xFF,     // sensitivity LSB
+        (sns >> 8) & 0xFF,     // sensitivity MSB
+        (refresh_us >> 0) & 0xFF,      // us LSB
+        (refresh_us >> 8) & 0xFF,      // us
+        (refresh_us >> 16) & 0xFF,     // us
+        (refresh_us >> 24) & 0xFF,     // us MSB
+        (batch_us >> 0) & 0xFF,        // batch interval LSB
+        (batch_us >> 8) & 0xFF,        // batch interval
+        (batch_us >> 16) & 0xFF,       // batch interval
+        (batch_us >> 24) & 0xFF,       // batch interval MSB
+        (cfg >> 0) & 0xFF,     // config LSB
+        (cfg >> 8) & 0xFF,     // config
         (cfg >> 16) & 0xFF,    // config
         (cfg >> 24) & 0xFF     // config MSB
     };
@@ -886,8 +871,8 @@ int common_hal_bno080i2c_BNO080I2C_set_feature(bno080i2c_BNO080I2C_obj_t *self, 
     mp_printf(&mp_plat_print, "setting feature [%d] rate [%d]\n", feature, refresh_us);
     rc = bno080i2c_send(self, BNO080_CHANNEL_CONTROL, command, sizeof(command));
     bno080i2c_sample(self);
-    
-    if(rc){
+
+    if (rc) {
         mp_raise_OSError(rc);
     }
 
@@ -922,7 +907,7 @@ mp_obj_t common_hal_bno080i2c_BNO080I2C_read(bno080i2c_BNO080I2C_obj_t *self, ui
 
     // mp_printf(&mp_plat_print, "time after sample: %d\n", mp_hal_ticks_ms());
 
-    switch(report_id){
+    switch (report_id) {
         case BNO080_SRID_ARVR_GAME_ROTATION_VECTOR:
         case BNO080_SRID_ARVR_ROTATION_VECTOR:
         case BNO080_SRID_GEOMAGNETIC_ROTATION_VECTOR:
@@ -964,7 +949,7 @@ void common_hal_bno080i2c_BNO080I2C_deinit(bno080i2c_BNO080I2C_obj_t *self) {
     if (!self->bus || !self->addr) {
         return;
     }
-    
+
     self->bus = 0;
     self->addr = 0;
 
