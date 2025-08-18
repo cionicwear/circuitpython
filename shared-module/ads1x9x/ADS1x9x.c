@@ -39,6 +39,7 @@
 #include "py/stream.h"
 
 #define ADS1x9x_BAUDRATE    (8000000)
+#define ADS1x9x_RINGBUF_SIZE (400)
 // TS (4 Bytes) + (nb_chan * sizeof(float)) +  ADS1X9X_SIZE_STATUS_REG + spi_cmd (1 Byte)
 #define TS_LEN              (sizeof(uint32_t))
 #define MAX_BUF_LEN         ((ADS1X9X_NUM_CHAN * sizeof(float)) + ADS1X9X_SIZE_STATUS_REG + 1 + TS_LEN)
@@ -207,7 +208,7 @@ void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi
     diff_filter_init(&self->diff_filter);
     iir_filter_init(&self->iir_filter);
     memset(&g_ads_sample, 0, sizeof(ads_sample_t));
-    self->rb = cionic_ringbuf_alloc(sizeof(ads_sample_t), 400);
+    self->rb = cionic_ringbuf_alloc(sizeof(ads_sample_t), ADS1x9x_RINGBUF_SIZE);
 
 
     if (self->rb == NULL) {
