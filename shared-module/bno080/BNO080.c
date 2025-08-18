@@ -887,7 +887,7 @@ void common_hal_bno080_BNO080_deinit(bno080_BNO080_obj_t *self) {
         return;
     }
 
-    self->bus = 0;
+    self->bus = NULL;
 
     common_hal_digitalio_digitalinout_deinit(&self->cs);
     common_hal_digitalio_digitalinout_deinit(&self->rst);

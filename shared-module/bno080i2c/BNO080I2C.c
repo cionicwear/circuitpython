@@ -924,12 +924,14 @@ mp_obj_t common_hal_bno080i2c_BNO080I2C_read(bno080i2c_BNO080I2C_obj_t *self, ui
                 bno080i2c_sample(self);
                 num_samples++;
             }
+            self->accel_recvd = false;
             return mp_obj_new_list(ACCEL_DIMENSION, self->accel);
         case BNO080_SRID_GYROSCOPE:
             while (!self->gyro_recvd && num_samples < 10) {
                 bno080i2c_sample(self);
                 num_samples++;
             }
+            self->gyro_recvd = false;
             return mp_obj_new_list(GYRO_DIMENSION, self->gyro);
         case BNO080_SRID_MAGNETIC_FIELD:
             return mp_obj_new_list(MAG_DIMENSION, self->mag);
@@ -946,12 +948,12 @@ void common_hal_bno080i2c_BNO080I2C_deinit(bno080i2c_BNO080I2C_obj_t *self) {
         mp_printf(&mp_plat_print, "hal deinit called\n");
     }
 
-    if (!self->bus || !self->addr) {
+    if (!self->bus || self->addr == -1) {
         return;
     }
 
-    self->bus = 0;
-    self->addr = 0;
+    self->bus = NULL;
+    self->addr = -1; // use an imposible address instead of 0
 
     return;
 }
