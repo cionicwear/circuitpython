@@ -11,10 +11,10 @@ ringbuf_t *cionic_ringbuf_alloc(uint16_t sample_size, uint16_t nsamples)
     int buflen = nsamples*sample_size;
     ringbuf_t *rb = NULL;
 
-    rb = gc_alloc((sizeof(ringbuf_t) + buflen), false); 
+    rb = gc_alloc((sizeof(ringbuf_t) + buflen), false);
     // ** removed the third param 'long_lived'=true from gc_alloc call (was included in our v7 code) because it is not supported in CP v9 anymore
     // 'false' flag is for alloc_flags instead (consistent with v7 code)
-    
+
     if(rb == NULL){
         return NULL;
     }

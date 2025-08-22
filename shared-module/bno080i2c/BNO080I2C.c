@@ -953,7 +953,7 @@ void common_hal_bno080i2c_BNO080I2C_deinit(bno080i2c_BNO080I2C_obj_t *self) {
     }
 
     self->bus = NULL;
-    self->addr = -1; // use an imposible address instead of 0
+    self->addr = -1; // use an impossible address instead of 0
 
     return;
 }
