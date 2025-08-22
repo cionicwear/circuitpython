@@ -39,15 +39,23 @@
 #include "supervisor/flash.h"
 
 //| class BNO080:
-//|     """BNO080 Interface
+//|     """
+//|     BNO080 Interface
 //|
 //|     Interacts with an BNO080 over SPI.
+//|     """
 //|
 //|     def __init__(
-//|         self, bus: busio.SPI, cs: microcontroller.Pin, rst: microcontroller.Pin,
-//|         drdy: microcontroller.Pin, start: microcontroller.Pin, pwdn: microcontroller.Pin
+//|         self,
+//|         bus: busio.SPI,
+//|         cs: microcontroller.Pin,
+//|         rst: microcontroller.Pin,
+//|         drdy: microcontroller.Pin,
+//|         start: microcontroller.Pin,
+//|         pwdn: microcontroller.Pin,
 //|     ) -> None:
-//|         """Construct an SPI BNO080 object with the given properties
+//|         """
+//|         Construct an SPI BNO080 object with the given properties
 //|
 //|         :param busio.SPI spi: The SPI bus
 //|         :param microcontroller.Pin cs: The SPI chip select
@@ -66,8 +74,7 @@
 //|             import bno080
 //|
 //|             bno = bno080.BNO080(board.SPI(), board.BNO_CS, board.BNO_RST, board.BNO_PS0, board.BNO_BOOTN, board.BNO_INT)
-//|     """
-
+//|         """
 STATIC mp_obj_t bno080_bno080_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     enum { ARG_spi, ARG_cs, ARG_rst, ARG_ps0, ARG_bootn, ARG_irq, NUM_ARGS };
     static const mp_arg_t allowed_args[] = {
@@ -123,6 +130,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(bno080_bno080_deinit_obj, bno080_BNO080_deinit);
 //|         """Disable permanently.
 //|
 //|         :return: None"""
+//|
 
 STATIC mp_obj_t bno080_BNO080_set_feature(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_feature, ARG_refresh_us, ARG_batch_us, ARG_flags, ARG_sns, ARG_cfg, NUM_ARGS };
