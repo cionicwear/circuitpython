@@ -43,7 +43,7 @@
 //| class BNO080I2C:
 //|     """BNO080I2C Interface
 //|
-//|     Interacts with an BNO080 over I2C."""
+//|     Interacts with an BNO080 over I2C.
 //|
 //|     def __init__(
 //|         self, bus: busio.I2C, sda: microcontroller.Pin, scl: microcontroller.Pin, addr: int = 0x4A,rst: microcontroller.Pin,
@@ -69,6 +69,7 @@
 //|             import bno080i2c
 //|
 //|             bno = bno080i2c.BNO080I2C(board.I2C(), board.ADDR, board.BNO_RST, board.BNO_PS0, board.BNO_BOOTN, board.BNO_INT)
+//|     """
 
 STATIC mp_obj_t bno080i2c_bno080i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     enum { ARG_i2c, ARG_addr,

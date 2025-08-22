@@ -41,7 +41,7 @@
 //| class BNO080:
 //|     """BNO080 Interface
 //|
-//|     Interacts with an BNO080 over SPI."""
+//|     Interacts with an BNO080 over SPI.
 //|
 //|     def __init__(
 //|         self, bus: busio.SPI, cs: microcontroller.Pin, rst: microcontroller.Pin,
@@ -66,6 +66,7 @@
 //|             import bno080
 //|
 //|             bno = bno080.BNO080(board.SPI(), board.BNO_CS, board.BNO_RST, board.BNO_PS0, board.BNO_BOOTN, board.BNO_INT)
+//|     """
 
 STATIC mp_obj_t bno080_bno080_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     enum { ARG_spi, ARG_cs, ARG_rst, ARG_ps0, ARG_bootn, ARG_irq, NUM_ARGS };
