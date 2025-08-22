@@ -47,19 +47,12 @@
 //|     Interacts with an BNO080 over I2C.
 //|     """
 //|
-//|     def __init__(
-//|         self, bus: busio.I2C, sda: microcontroller.Pin, scl: microcontroller.Pin, addr: int = 0x4A,rst: microcontroller.Pin,
-//|         drdy: microcontroller.Pin, start: microcontroller.Pin, pwdn: microcontroller.Pin
-//|     ) -> None:
+//|     def __init__(self, bus: busio.I2C, addr: int = 0x4A, debug: bool = False) -> None:
 //|         """
 //|         Construct a BNO080I2C object with the given properties
 //|
 //|         :param busio.I2C i2c: The I2C bus
-//|         :param int addr: The BNO080 I2C address
-//|         :param microcontroller.Pin rst: The BNO080 reset pin
-//|         :param microcontroller.Pin ps0: The BNO080 PS0/Wake pin
-//|         :param microcontroller.Pin bootn: The BNO080 bootn pin
-//|         :param microcontroller.Pin irq: The BNO080 interrupt pin
+//|         :param int addr: The BNO080 I2C address (optional, default=0x4A)
 //|         :param bool debug: Enable debugging output (optional, default=False)
 //|
 //|         Example usage:
@@ -71,9 +64,8 @@
 //|             import board
 //|             import bno080i2c
 //|
-//|             bno = bno080i2c.BNO080I2C(board.I2C(), board.ADDR, board.BNO_RST, board.BNO_PS0, board.BNO_BOOTN, board.BNO_INT)
+//|             bno = bno080i2c.BNO080I2C(board.I2C(), board.ADDR, debug=False)
 //|         """
-//|
 STATIC mp_obj_t bno080i2c_bno080i2c_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     enum { ARG_i2c, ARG_addr,
            // ARG_rst, ARG_ps0, ARG_bootn, ARG_irq,
@@ -152,6 +144,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(bno080i2c_bno080i2c_deinit_obj, bno080i2c_BNO080I2C_de
 //|         """Disable permanently.
 //|
 //|         :return: None"""
+//|
 
 STATIC mp_obj_t bno080i2c_BNO080I2C_set_feature(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     bno080i2c_BNO080I2C_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
