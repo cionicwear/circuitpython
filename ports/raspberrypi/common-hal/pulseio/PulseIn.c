@@ -4,7 +4,7 @@
 //
 // SPDX-License-Identifier: MIT
 
-#include "src/rp2_common/hardware_gpio/include/hardware/gpio.h"
+#include "hardware/gpio.h"
 
 #include <stdint.h>
 
@@ -26,7 +26,7 @@ static const uint16_t pulsein_program[] = {
 void common_hal_pulseio_pulsein_construct(pulseio_pulsein_obj_t *self,
     const mcu_pin_obj_t *pin, uint16_t maxlen, bool idle_state) {
 
-    self->buffer = (uint16_t *)m_malloc(maxlen * sizeof(uint16_t));
+    self->buffer = (uint16_t *)m_malloc_without_collect(maxlen * sizeof(uint16_t));
     if (self->buffer == NULL) {
         m_malloc_fail(maxlen * sizeof(uint16_t));
     }
@@ -41,20 +41,22 @@ void common_hal_pulseio_pulsein_construct(pulseio_pulsein_obj_t *self,
         1000000, // frequency
         NULL, 0, // init, init_len
         NULL, 0, // may_exec
-        NULL, 0, 0, 0, // first out pin, # out pins, initial_out_pin_state
-        pin, 1, 0, 0, // first in pin, # in pins
-        NULL, 0, 0, 0, // first set pin
-        NULL, 0, 0, 0, // first sideset pin
+        NULL, 0, PIO_PINMASK32_NONE, PIO_PINMASK32_NONE, // first out pin, # out pins, initial_out_pin_state
+        pin, 1, PIO_PINMASK32_NONE, PIO_PINMASK32_NONE, // first in pin, # in pins
+        NULL, 0, PIO_PINMASK32_NONE, PIO_PINMASK32_NONE, // first set pin
+        NULL, 0, false, PIO_PINMASK32_NONE, PIO_PINMASK32_NONE, // first sideset pin
         false, // No sideset enable
         NULL, PULL_NONE, // jump pin, jmp_pull
-        0, // wait gpio pins
+        PIO_PINMASK_NONE, // wait gpio pins
         true, // exclusive pin usage
         false, 8, false, // TX, setting we don't use
         false, // wait for TX stall
         true, 32, true, // RX auto pull every 32 bits. shift left to output msb first
         false, // Not user-interruptible.
         0, -1, // wrap settings
-        PIO_ANY_OFFSET);
+        PIO_ANY_OFFSET,
+        PIO_FIFO_TYPE_DEFAULT,
+        PIO_MOV_STATUS_DEFAULT, PIO_MOV_N_DEFAULT);
 
     common_hal_pulseio_pulsein_pause(self);
 

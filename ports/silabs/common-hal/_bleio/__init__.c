@@ -38,7 +38,7 @@
 #include "supervisor/shared/bluetooth/bluetooth.h"
 #include "common-hal/_bleio/__init__.h"
 
-STATIC conn_state_t conn_state;
+static conn_state_t conn_state;
 osMutexId_t bluetooth_connection_mutex_id;
 bleio_adapter_obj_t common_hal_bleio_adapter_obj;
 uint8_t ble_bonding_handle = 0xFF;
@@ -54,7 +54,7 @@ const osMutexAttr_t bluetooth_connection_mutex_attr = {
 void common_hal_bleio_init(void) {
 }
 
-void bleio_user_reset() {
+void bleio_user_reset(void) {
     // Stop any user scanning or advertising.
     common_hal_bleio_adapter_stop_scan(&common_hal_bleio_adapter_obj);
     common_hal_bleio_adapter_stop_advertising(&common_hal_bleio_adapter_obj);
@@ -63,7 +63,7 @@ void bleio_user_reset() {
     supervisor_bluetooth_background();
 }
 
-void bleio_reset() {
+void bleio_reset(void) {
     reset_dynamic_service();
     reset_packet_buffer_list();
     reset_characteristic_buffer_list();
@@ -112,8 +112,8 @@ void common_hal_bleio_check_connected(uint16_t conn_handle) {
 void sl_bt_on_event(sl_bt_msg_t *evt) {
     bd_addr address;
     uint8_t address_type = 0;
-    STATIC uint8_t serv_idx = 0;
-    STATIC uint8_t device_name[16];
+    static uint8_t serv_idx = 0;
+    static uint8_t device_name[16];
 
     bleio_connection_internal_t *connection;
     bleio_service_obj_t *service;
@@ -194,8 +194,7 @@ void sl_bt_on_event(sl_bt_msg_t *evt) {
             uuid = m_new_obj_maybe(bleio_uuid_obj_t);
             if (NULL == uuid) {
                 osMutexRelease(bluetooth_connection_mutex_id);
-                mp_raise_bleio_BluetoothError(
-                    MP_ERROR_TEXT("Create new service uuid obj fail"));
+                m_malloc_fail(sizeof(bleio_uuid_obj_t));
                 break;
             }
             uuid->base.type = &bleio_uuid_type;

@@ -14,6 +14,7 @@ Support Status:
     ESP32-C2, "alpha"
     ESP32-C3, "beta"
     ESP32-C6, "alpha"
+    ESP32-P4, "alpha"
     ESP32-S2, "stable"
     ESP32-S3, "stable"
 
@@ -155,6 +156,8 @@ Before building or flashing the, you must `install the ESP-IDF <https://docs.esp
 
 Note: This must be re-done every time the ESP-IDF is updated, but not every time you build.
 
+Note: The ``./esp-idf/install.sh`` script is part of a submodule. Please refer to the `Building CircuitPython Learn Guide <https://learn.adafruit.com/building-circuitpython>`_ for instructions about using ``make fetch-port-submodules``.
+
 Run ``cd ports/espressif`` from ``circuitpython/`` to move to the espressif port root, and run:
 
 .. code-block::
@@ -219,4 +222,3 @@ And follow the Espressif GDB tutorial `instructions for connecting <https://docs
     mon reset halt
     flushregs
     thb app_main
-    c

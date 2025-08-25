@@ -3,6 +3,7 @@
 // SPDX-FileCopyrightText: Copyright (c) 2016-2017 Scott Shawcroft for Adafruit Industries
 //
 // SPDX-License-Identifier: MIT
+#include <stddef.h>
 #include <string.h>
 
 #include "py/obj.h"
@@ -25,8 +26,10 @@
 #include "shared-bindings/time/__init__.h"
 #include "shared-bindings/supervisor/Runtime.h"
 #include "shared-bindings/supervisor/StatusBar.h"
+#include "shared-bindings/util.h"
 
 //| """Supervisor settings"""
+//|
 
 //| runtime: Runtime
 //| """Runtime information, such as ``runtime.serial_connected``
@@ -40,10 +43,12 @@
 //| the last exception name and location, and firmware version information.
 //| This object is the sole instance of `supervisor.StatusBar`."""
 //|
+//|
 
 //| def reload() -> None:
 //|     """Reload the main Python code and run it (equivalent to hitting Ctrl-D at the REPL)."""
 //|     ...
+//|
 //|
 static mp_obj_t supervisor_reload(void) {
     reload_initiate(RUN_REASON_SUPERVISOR_RELOAD);
@@ -54,11 +59,12 @@ MP_DEFINE_CONST_FUN_OBJ_0(supervisor_reload_obj, supervisor_reload);
 //| def set_next_code_file(
 //|     filename: Optional[str],
 //|     *,
+//|     working_directory: Optional[str] = None,
 //|     reload_on_success: bool = False,
 //|     reload_on_error: bool = False,
 //|     sticky_on_success: bool = False,
 //|     sticky_on_error: bool = False,
-//|     sticky_on_reload: bool = False
+//|     sticky_on_reload: bool = False,
 //| ) -> None:
 //|     """Set what file to run on the next vm run.
 //|
@@ -92,9 +98,11 @@ MP_DEFINE_CONST_FUN_OBJ_0(supervisor_reload_obj, supervisor_reload);
 //|     reset to the standard search sequence."""
 //|     ...
 //|
+//|
 static mp_obj_t supervisor_set_next_code_file(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_filename, MP_ARG_REQUIRED | MP_ARG_OBJ, {.u_rom_obj = mp_const_none} },
+        { MP_QSTR_working_directory, MP_ARG_KW_ONLY | MP_ARG_OBJ, {.u_rom_obj = mp_const_none} },
         { MP_QSTR_reload_on_success, MP_ARG_KW_ONLY | MP_ARG_BOOL, {.u_bool = false} },
         { MP_QSTR_reload_on_error, MP_ARG_KW_ONLY | MP_ARG_BOOL, {.u_bool = false} },
         { MP_QSTR_sticky_on_success, MP_ARG_KW_ONLY | MP_ARG_BOOL, {.u_bool = false} },
@@ -103,6 +111,7 @@ static mp_obj_t supervisor_set_next_code_file(size_t n_args, const mp_obj_t *pos
     };
     struct {
         mp_arg_val_t filename;
+        mp_arg_val_t working_directory;
         mp_arg_val_t reload_on_success;
         mp_arg_val_t reload_on_error;
         mp_arg_val_t sticky_on_success;
@@ -113,6 +122,11 @@ static mp_obj_t supervisor_set_next_code_file(size_t n_args, const mp_obj_t *pos
     mp_obj_t filename_obj = args.filename.u_obj;
     if (!mp_obj_is_str_or_bytes(filename_obj) && filename_obj != mp_const_none) {
         mp_raise_TypeError_varg(MP_ERROR_TEXT("%q must be of type %q or %q, not %q"), MP_QSTR_filename, MP_QSTR_str, MP_QSTR_None, mp_obj_get_type(filename_obj)->name);
+    }
+
+    mp_obj_t working_directory_obj = args.working_directory.u_obj;
+    if (!mp_obj_is_str_or_bytes(working_directory_obj) && working_directory_obj != mp_const_none) {
+        mp_raise_TypeError_varg(MP_ERROR_TEXT("%q must be of type %q or %q, not %q"), MP_QSTR_working_directory, MP_QSTR_str, MP_QSTR_None, mp_obj_get_type(working_directory_obj)->name);
     }
     if (filename_obj == mp_const_none) {
         filename_obj = mp_const_empty_bytes;
@@ -135,18 +149,50 @@ static mp_obj_t supervisor_set_next_code_file(size_t n_args, const mp_obj_t *pos
     }
     size_t len;
     const char *filename = mp_obj_str_get_data(filename_obj, &len);
+    if (!path_exists(filename)) {
+        mp_raise_ValueError(MP_ERROR_TEXT("File not found"));
+    }
+
+    size_t working_directory_len = 0;
+    const char *working_directory = NULL;
+    if (working_directory_obj != mp_const_none) {
+        working_directory = mp_obj_str_get_data(working_directory_obj, &working_directory_len);
+        if (!path_exists(working_directory)) {
+            mp_raise_ValueError_varg(MP_ERROR_TEXT("Invalid %q"), MP_QSTR_working_directory);
+        }
+    }
     if (next_code_configuration != NULL) {
         port_free(next_code_configuration);
         next_code_configuration = NULL;
     }
     if (options != 0 || len != 0) {
-        next_code_configuration = port_malloc(sizeof(supervisor_next_code_info_t) + len + 1, false);
-        if (next_code_configuration == NULL) {
-            m_malloc_fail(sizeof(supervisor_next_code_info_t) + len + 1);
+
+        size_t next_code_size = sizeof(supervisor_next_code_info_t) + len + 1;
+        if (working_directory_len > 0) {
+            next_code_size += working_directory_len + 1;
         }
+        next_code_configuration = port_malloc(next_code_size, false);
+        if (next_code_configuration == NULL) {
+            m_malloc_fail(next_code_size);
+        }
+        char *filename_ptr = (char *)next_code_configuration + sizeof(supervisor_next_code_info_t);
+
+        // Copy filename
+        memcpy(filename_ptr, filename, len);
+        filename_ptr[len] = '\0';
+
+        char *working_directory_ptr = NULL;
+        // Copy working directory after filename if present
+        if (working_directory_len > 0) {
+            working_directory_ptr = filename_ptr + len + 1;
+            memcpy(working_directory_ptr, working_directory, working_directory_len);
+            working_directory_ptr[working_directory_len] = '\0';
+        }
+        // Set everything up last. We may have raised an exception early and we
+        // don't want to free the memory if we failed.
+        next_code_configuration->filename = filename_ptr;
+        next_code_configuration->working_directory = working_directory_ptr;
         next_code_configuration->options = options | SUPERVISOR_NEXT_CODE_OPT_NEWLY_SET;
-        memcpy(&next_code_configuration->filename, filename, len);
-        next_code_configuration->filename[len] = '\0';
     }
     return mp_const_none;
 }
@@ -194,6 +240,7 @@ MP_DEFINE_CONST_FUN_OBJ_KW(supervisor_set_next_code_file_obj, 0, supervisor_set_
 //|     """
 //|     ...
 //|
+//|
 mp_obj_t supervisor_ticks_ms(void) {
     uint64_t ticks_ms = common_hal_time_monotonic_ms();
     return mp_obj_new_int((ticks_ms + 0x1fff0000) % (1 << 29));
@@ -209,6 +256,7 @@ MP_DEFINE_CONST_FUN_OBJ_0(supervisor_ticks_ms_obj, supervisor_ticks_ms);
 //|
 //|     Only code (main or boot) runs are considered, not REPL runs."""
 //|     ...
+//|
 //|
 static mp_obj_t supervisor_get_previous_traceback(void) {
     if (prev_traceback_string) {
@@ -229,6 +277,7 @@ MP_DEFINE_CONST_FUN_OBJ_0(supervisor_get_previous_traceback_obj, supervisor_get_
 //| def reset_terminal(x_pixels: int, y_pixels: int) -> None:
 //|     """Reset the CircuitPython serial terminal with new dimensions."""
 //|     ...
+//|
 //|
 static mp_obj_t supervisor_reset_terminal(mp_obj_t x_pixels, mp_obj_t y_pixels) {
     #if CIRCUITPY_DISPLAYIO
@@ -257,6 +306,7 @@ MP_DEFINE_CONST_FUN_OBJ_2(supervisor_reset_terminal_obj, supervisor_reset_termin
 //|     Not available on boards without native USB support.
 //|     """
 //|     ...
+//|
 //|
 static mp_obj_t supervisor_set_usb_identification(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     #if CIRCUITPY_USB_DEVICE && CIRCUITPY_USB_IDENTIFICATION

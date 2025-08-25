@@ -24,7 +24,12 @@
  * THE SOFTWARE.
  */
 
+// This API is deprecated, please use py/cstack.h instead
+
 #include "py/runtime.h"
+
+#if !MICROPY_PREVIEW_VERSION_2
+
 #include "py/stackctrl.h"
 
 void mp_stack_ctrl_init(void) {
@@ -45,6 +50,7 @@ void mp_stack_set_top(void *top) {
     MP_STATE_THREAD(stack_top) = top;
 }
 
+// CIRCUITPY-CHANGE: PLACE_IN_ITCM
 mp_uint_t PLACE_IN_ITCM(mp_stack_usage)(void) {
     // Assumes descending stack
     // CIRCUITPY-CHANGE: Force routine to not be inlined. Better guarantee than MP_NOINLINE for -flto.
@@ -59,6 +65,7 @@ void mp_stack_set_limit(mp_uint_t limit) {
     MP_STATE_THREAD(stack_limit) = limit;
 }
 
+// CIRCUITPY-CHANGE: PLACE_IN_ITCM
 void PLACE_IN_ITCM(mp_stack_check)(void) {
     if (mp_stack_usage() >= MP_STATE_THREAD(stack_limit)) {
         mp_raise_recursion_depth();
@@ -66,3 +73,5 @@ void PLACE_IN_ITCM(mp_stack_check)(void) {
 }
 
 #endif // MICROPY_STACK_CHECK
+
+#endif // !MICROPY_PREVIEW_VERSION_2

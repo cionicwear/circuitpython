@@ -43,7 +43,25 @@
 //| refer to `this Learn guide
 //| <https://learn.adafruit.com/circuitpython-display-support-using-displayio>`_.
 //| """
+//|
 
+//| AnyDisplayBus = fourwire.FourWire | i2cdisplaybus.I2CDisplayBus | is31fl3741.IS31FL3741
+//| """Type-checking shorthand for any kind of display bus. Not actually defined in CircuitPython."""
+//|
+//| AnyFramebuffer = (
+//|     rgbmatrix.RGBMatrix
+//|     | is31fl3741.IS31FL3741_FrameBuffer
+//|     | sharpdisplay.SharpMemoryFramebuffer
+//|     | videocore.Framebuffer
+//|     | picodvi.Framebuffer
+//|     | aurora_epaper.AuroraMemoryFramebuffer
+//| )
+//| """Type-checking shorthand for any kind of framebuffer. Not actually defined in CircuitPython."""
+//|
+//| AnyDisplay = (
+//|     busdisplay.BusDisplay | epaperdisplay.EPaperDisplay | framebufferio.FramebufferDisplay
+//| )
+//| """Type-checking shorthand for any kind of display. Not actually defined in CircuitPython."""
 //| CIRCUITPYTHON_TERMINAL: Group
 //| """The `displayio.Group` that is the displayed serial terminal (REPL)."""
 //|
@@ -52,6 +70,7 @@
 //| from epaperdisplay import EPaperDisplay
 //| from fourwire import FourWire
 //| from i2cdisplaybus import I2CDisplayBus as I2CDisplay
+//|
 //|
 
 //| def release_displays() -> None:
@@ -62,6 +81,7 @@
 //|     Use this once in your code.py if you initialize a display. Place it right before the
 //|     initialization so the display is active as long as possible."""
 //|     ...
+//|
 //|
 static mp_obj_t displayio_release_displays(void) {
     common_hal_displayio_release_displays();
@@ -80,21 +100,8 @@ static const mp_rom_map_elem_t displayio_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR_Palette), MP_ROM_PTR(&displayio_palette_type) },
     { MP_ROM_QSTR(MP_QSTR_TileGrid), MP_ROM_PTR(&displayio_tilegrid_type) },
 
-    // Remove these in CircuitPython 10
-    #if CIRCUITPY_BUSDISPLAY
-    { MP_ROM_QSTR(MP_QSTR_Display), MP_ROM_PTR(&busdisplay_busdisplay_type) },
-    #endif
-    #if CIRCUITPY_EPAPERDISPLAY
-    { MP_ROM_QSTR(MP_QSTR_EPaperDisplay), MP_ROM_PTR(&epaperdisplay_epaperdisplay_type) },
-    #endif
-    #if CIRCUITPY_FOURWIRE
-    { MP_ROM_QSTR(MP_QSTR_FourWire), MP_ROM_PTR(&fourwire_fourwire_type) },
-    #endif
-    #if CIRCUITPY_I2CDISPLAYBUS
-    { MP_ROM_QSTR(MP_QSTR_I2CDisplay), MP_ROM_PTR(&i2cdisplaybus_i2cdisplaybus_type) },
-    #endif
-
     { MP_ROM_QSTR(MP_QSTR_release_displays), MP_ROM_PTR(&displayio_release_displays_obj) },
+
     { MP_ROM_QSTR(MP_QSTR_CIRCUITPYTHON_TERMINAL), MP_ROM_PTR(&circuitpython_splash) },
 };
 static MP_DEFINE_CONST_DICT(displayio_module_globals, displayio_module_globals_table);

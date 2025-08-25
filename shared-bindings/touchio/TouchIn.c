@@ -31,21 +31,30 @@
 //|                print("touched!")"""
 //|
 
-//|     def __init__(self, pin: microcontroller.Pin) -> None:
+//|     def __init__(self, pin: microcontroller.Pin, pull: Optional[digitalio.Pull] = None) -> None:
 //|         """Use the TouchIn on the given pin.
 //|
-//|         :param ~microcontroller.Pin pin: the pin to read from"""
+//|         :param ~microcontroller.Pin pin: the pin to read from
+//|         :param Optional[digitalio.Pull] pull: specify external pull resistor type. If None, assume pull-down or chip-specific implementation that does not require a pull.
+//|         """
 //|         ...
+//|
 static mp_obj_t touchio_touchin_make_new(const mp_obj_type_t *type,
-    size_t n_args, size_t n_kw, const mp_obj_t *args) {
-    // check number of arguments
-    mp_arg_check_num(n_args, n_kw, 1, 1, false);
+    size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
 
-    // 1st argument is the pin
-    const mcu_pin_obj_t *pin = validate_obj_is_free_pin(args[0], MP_QSTR_pin);
+    enum { ARG_pin, ARG_pull };
+    static const mp_arg_t allowed_args[] = {
+        { MP_QSTR_pin,  MP_ARG_OBJ | MP_ARG_REQUIRED },
+        { MP_QSTR_pull, MP_ARG_OBJ, {.u_obj = mp_const_none} },
+    };
+    mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
+    mp_arg_parse_all_kw_array(n_args, n_kw, all_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
+
+    const mcu_pin_obj_t *pin = validate_obj_is_free_pin(args[ARG_pin].u_obj, MP_QSTR_pin);
+    const digitalio_pull_t pull = validate_pull(args[ARG_pull].u_obj, MP_QSTR_pull);
 
     touchio_touchin_obj_t *self = mp_obj_malloc(touchio_touchin_obj_t, &touchio_touchin_type);
-    common_hal_touchio_touchin_construct(self, pin);
+    common_hal_touchio_touchin_construct(self, pin, pull);
 
     return (mp_obj_t)self;
 }
@@ -53,6 +62,7 @@ static mp_obj_t touchio_touchin_make_new(const mp_obj_type_t *type,
 //|     def deinit(self) -> None:
 //|         """Deinitialises the TouchIn and releases any hardware resources for reuse."""
 //|         ...
+//|
 static mp_obj_t touchio_touchin_deinit(mp_obj_t self_in) {
     touchio_touchin_obj_t *self = MP_OBJ_TO_PTR(self_in);
     common_hal_touchio_touchin_deinit(self);
@@ -69,18 +79,15 @@ static void check_for_deinit(touchio_touchin_obj_t *self) {
 //|     def __enter__(self) -> TouchIn:
 //|         """No-op used by Context Managers."""
 //|         ...
+//|
 //  Provided by context manager helper.
 
 //|     def __exit__(self) -> None:
 //|         """Automatically deinitializes the hardware when exiting a context. See
 //|         :ref:`lifetime-and-contextmanagers` for more info."""
 //|         ...
-static mp_obj_t touchio_touchin_obj___exit__(size_t n_args, const mp_obj_t *args) {
-    (void)n_args;
-    common_hal_touchio_touchin_deinit(args[0]);
-    return mp_const_none;
-}
-static MP_DEFINE_CONST_FUN_OBJ_VAR_BETWEEN(touchio_touchin___exit___obj, 4, 4, touchio_touchin_obj___exit__);
+//|
+//  Provided by context manager helper.
 
 //|     value: bool
 //|     """Whether the touch pad is being touched or not. (read-only)
@@ -125,6 +132,7 @@ MP_PROPERTY_GETTER(touchio_touchin_raw_value_obj,
 //|       touch = touchio.TouchIn(board.A1)
 //|       touch.threshold = 7300"""
 //|
+//|
 static mp_obj_t touchio_touchin_obj_get_threshold(mp_obj_t self_in) {
     touchio_touchin_obj_t *self = MP_OBJ_TO_PTR(self_in);
     check_for_deinit(self);
@@ -151,12 +159,12 @@ MP_PROPERTY_GETSET(touchio_touchin_threshold_obj,
 
 static const mp_rom_map_elem_t touchio_touchin_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR___enter__), MP_ROM_PTR(&default___enter___obj) },
-    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&touchio_touchin___exit___obj) },
+    { MP_ROM_QSTR(MP_QSTR___exit__), MP_ROM_PTR(&default___exit___obj) },
     { MP_ROM_QSTR(MP_QSTR_deinit), MP_ROM_PTR(&touchio_touchin_deinit_obj) },
 
-    { MP_OBJ_NEW_QSTR(MP_QSTR_value), MP_ROM_PTR(&touchio_touchin_value_obj)},
-    { MP_OBJ_NEW_QSTR(MP_QSTR_raw_value), MP_ROM_PTR(&touchio_touchin_raw_value_obj)},
-    { MP_OBJ_NEW_QSTR(MP_QSTR_threshold), MP_ROM_PTR(&touchio_touchin_threshold_obj)},
+    { MP_ROM_QSTR(MP_QSTR_value), MP_ROM_PTR(&touchio_touchin_value_obj)},
+    { MP_ROM_QSTR(MP_QSTR_raw_value), MP_ROM_PTR(&touchio_touchin_raw_value_obj)},
+    { MP_ROM_QSTR(MP_QSTR_threshold), MP_ROM_PTR(&touchio_touchin_threshold_obj)},
 };
 
 static MP_DEFINE_CONST_DICT(touchio_touchin_locals_dict, touchio_touchin_locals_dict_table);

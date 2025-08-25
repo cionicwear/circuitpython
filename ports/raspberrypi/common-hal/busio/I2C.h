@@ -11,7 +11,7 @@
 
 #include "py/obj.h"
 
-#include "src/rp2_common/hardware_i2c/include/hardware/i2c.h"
+#include "hardware/i2c.h"
 
 typedef struct {
     mp_obj_base_t base;
@@ -22,5 +22,3 @@ typedef struct {
     uint8_t scl_pin;
     uint8_t sda_pin;
 } busio_i2c_obj_t;
-
-void reset_i2c(void);

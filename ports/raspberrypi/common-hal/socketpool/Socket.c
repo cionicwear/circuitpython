@@ -35,7 +35,7 @@
 #include "lwip/timeouts.h"
 #include "lwip/udp.h"
 
-#include "sdk/src/rp2_common/pico_cyw43_arch/include/pico/cyw43_arch.h"
+#include "pico/cyw43_arch.h"
 
 mp_obj_t socketpool_ip_addr_to_str(const ip_addr_t *addr) {
     char ip_str[IPADDR_STRLEN_MAX]; // big enough for any supported address type
@@ -746,8 +746,7 @@ socketpool_socket_obj_t *common_hal_socketpool_socket(socketpool_socketpool_obj_
         mp_raise_NotImplementedError(MP_ERROR_TEXT("Only IPv4 sockets supported"));
     }
 
-    socketpool_socket_obj_t *socket = m_new_obj_with_finaliser(socketpool_socket_obj_t);
-    socket->base.type = &socketpool_socket_type;
+    socketpool_socket_obj_t *socket = mp_obj_malloc_with_finaliser(socketpool_socket_obj_t, &socketpool_socket_type);
 
     if (!socketpool_socket(self, family, type, proto, socket)) {
         mp_raise_RuntimeError(MP_ERROR_TEXT("Out of sockets"));
@@ -849,7 +848,8 @@ socketpool_socket_obj_t *common_hal_socketpool_socket_accept(socketpool_socket_o
     mp_obj_t *peer_out) {
     // Create new socket object, do it here because we must not raise an out-of-memory
     // exception when the LWIP concurrency lock is held
-    socketpool_socket_obj_t *accepted = m_new_ll_obj_with_finaliser(socketpool_socket_obj_t);
+    // Don't set the type field: socketpool_socket_reset() will do that when checking for already reset.
+    socketpool_socket_obj_t *accepted = mp_obj_malloc_with_finaliser(socketpool_socket_obj_t, NULL);
     socketpool_socket_reset(accepted);
 
     int ret = socketpool_socket_accept(socket, peer_out, accepted);
@@ -1071,7 +1071,8 @@ bool common_hal_socketpool_socket_listen(socketpool_socket_obj_t *socket, int ba
         socket->incoming.connection.tcp.item = NULL;
     } else {
         socket->incoming.connection.alloc = backlog;
-        socket->incoming.connection.tcp.array = m_new0(struct tcp_pcb *, backlog);
+        socket->incoming.connection.tcp.array = m_malloc_without_collect(sizeof(struct tcp_pcb *) * backlog);
+        memset(socket->incoming.connection.tcp.array, 0, sizeof(struct tcp_pcb *) * backlog);
     }
     socket->incoming.connection.iget = 0;
     socket->incoming.connection.iput = 0;

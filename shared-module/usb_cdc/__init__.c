@@ -192,6 +192,11 @@ size_t usb_cdc_add_descriptor(uint8_t *descriptor_buf, descriptor_counts_t *desc
         ? (USB_CDC_EP_NUM_DATA_IN ? USB_CDC_EP_NUM_DATA_IN : descriptor_counts->current_endpoint)
         : (USB_CDC2_EP_NUM_DATA_IN ? USB_CDC2_EP_NUM_DATA_IN : descriptor_counts->current_endpoint));
     descriptor_counts->num_in_endpoints++;
+    // Some TinyUSB devices have issues with bi-directional endpoints
+    #ifdef TUD_ENDPOINT_ONE_DIRECTION_ONLY
+    descriptor_counts->current_endpoint++;
+    #endif
+
     descriptor_buf[CDC_DATA_OUT_ENDPOINT_INDEX] =
         console
         ? (USB_CDC_EP_NUM_DATA_OUT ? USB_CDC_EP_NUM_DATA_OUT : descriptor_counts->current_endpoint)
@@ -351,10 +356,10 @@ size_t usb_vendor_descriptor_length(void) {
 
 static uint8_t *ms_os_20_descriptor = NULL;
 
-size_t vendor_ms_os_20_descriptor_length() {
+size_t vendor_ms_os_20_descriptor_length(void) {
     return ms_os_20_descriptor != NULL ? sizeof(ms_os_20_descriptor_template) : 0;
 }
-uint8_t const *vendor_ms_os_20_descriptor() {
+uint8_t const *vendor_ms_os_20_descriptor(void) {
     return ms_os_20_descriptor;
 }
 

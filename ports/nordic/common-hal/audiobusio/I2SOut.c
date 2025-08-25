@@ -240,8 +240,8 @@ void common_hal_audiobusio_i2sout_play(audiobusio_i2sout_obj_t *self,
 
     self->sample = sample;
     self->loop = loop;
-    uint32_t sample_rate = audiosample_sample_rate(sample);
-    self->bytes_per_sample = audiosample_bits_per_sample(sample) / 8;
+    uint32_t sample_rate = audiosample_get_sample_rate(sample);
+    self->bytes_per_sample = audiosample_get_bits_per_sample(sample) / 8;
 
     uint32_t max_buffer_length;
     bool single_buffer, samples_signed;
@@ -269,8 +269,8 @@ void common_hal_audiobusio_i2sout_play(audiobusio_i2sout_obj_t *self,
     self->buffer_length = sample_rate * buffer_length_ms
         * self->bytes_per_sample * self->channel_count / 1000;
     self->buffer_length = (self->buffer_length + 3) & ~3;
-    self->buffers[0] = m_malloc(self->buffer_length);
-    self->buffers[1] = m_malloc(self->buffer_length);
+    self->buffers[0] = m_malloc_without_collect(self->buffer_length);
+    self->buffers[1] = m_malloc_without_collect(self->buffer_length);
 
 
     audiosample_reset_buffer(self->sample, false, 0);

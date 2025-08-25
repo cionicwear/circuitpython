@@ -26,6 +26,10 @@
 
 // options to control how MicroPython is built
 
+// CIRCUITPY-CHANGE: mpy-cross doesn't have background tasks
+#define RUN_BACKGROUND_TASKS ((void)0)
+
+
 #define MICROPY_ALLOC_PATH_MAX      (PATH_MAX)
 #define MICROPY_PERSISTENT_CODE_LOAD (0)
 #define MICROPY_PERSISTENT_CODE_SAVE (1)
@@ -42,12 +46,14 @@
 #define MICROPY_EMIT_X86            (1)
 #define MICROPY_EMIT_THUMB          (1)
 #define MICROPY_EMIT_INLINE_THUMB   (1)
-#define MICROPY_EMIT_INLINE_THUMB_ARMV7M (1)
-#define MICROPY_EMIT_INLINE_THUMB_FLOAT (1)
 #define MICROPY_EMIT_ARM            (1)
 #define MICROPY_EMIT_XTENSA         (1)
 #define MICROPY_EMIT_INLINE_XTENSA  (1)
 #define MICROPY_EMIT_XTENSAWIN      (1)
+#define MICROPY_EMIT_RV32           (1)
+#define MICROPY_EMIT_INLINE_RV32    (1)
+#define MICROPY_EMIT_NATIVE_DEBUG   (1)
+#define MICROPY_EMIT_NATIVE_DEBUG_PRINTER (&mp_stdout_print)
 
 #define MICROPY_DYNAMIC_COMPILER    (1)
 #define MICROPY_COMP_CONST_FOLDING  (1)
@@ -72,6 +78,7 @@
 
 #define MICROPY_FLOAT_IMPL          (MICROPY_FLOAT_IMPL_DOUBLE)
 #define MICROPY_CPYTHON_COMPAT      (1)
+// CIRCUITPY-CHANGE
 #define MICROPY_PY_ASYNC_AWAIT      (1)
 #define MICROPY_USE_INTERNAL_PRINTF (0)
 
@@ -92,50 +99,6 @@
 #define MICROPY_PY_GC               (0)
 #define MICROPY_PY_IO               (0)
 #define MICROPY_PY_SYS              (0)
-
-// MINGW only handles these errno names.
-#ifdef __MINGW32__
-#define MICROPY_PY_ERRNO_LIST \
-    X(EPERM) \
-    X(ENOENT) \
-    X(ESRCH) \
-    X(EINTR) \
-    X(EIO) \
-    X(ENXIO) \
-    X(E2BIG) \
-    X(ENOEXEC) \
-    X(EBADF) \
-    X(ECHILD) \
-    X(EAGAIN) \
-    X(ENOMEM) \
-    X(EACCES) \
-    X(EFAULT) \
-    X(EBUSY) \
-    X(EEXIST) \
-    X(EXDEV) \
-    X(ENODEV) \
-    X(ENOTDIR) \
-    X(EISDIR) \
-    X(EINVAL) \
-    X(ENFILE) \
-    X(EMFILE) \
-    X(ENOTTY) \
-    X(EFBIG) \
-    X(ENOSPC) \
-    X(ESPIPE) \
-    X(EROFS) \
-    X(EMLINK) \
-    X(EPIPE) \
-    X(EDOM) \
-    X(ERANGE) \
-    X(EDEADLOCK) \
-    X(EDEADLK) \
-    X(ENAMETOOLONG) \
-    X(ENOLCK) \
-    X(ENOSYS) \
-    X(ENOTEMPTY) \
-    X(EILSEQ)
-#endif
 
 // type definitions for the specific machine
 
@@ -210,3 +173,5 @@ typedef int ssize_t;
 typedef mp_off_t off_t;
 
 #endif
+
+extern const struct _mp_print_t mp_stdout_print;

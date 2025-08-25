@@ -19,7 +19,6 @@ SRC_SUPERVISOR = \
 	supervisor/shared/traceback.c \
 	supervisor/shared/translate/translate.c \
 	supervisor/shared/workflow.c \
-	supervisor/stub/misc.c \
 
 # For tlsf
 CFLAGS += -D_DEBUG=0
@@ -263,6 +262,7 @@ CFLAGS += -DUSB_HIGHSPEED=$(USB_HIGHSPEED)
 $(BUILD)/supervisor/shared/translate/translate.o: $(HEADER_BUILD)/qstrdefs.generated.h $(HEADER_BUILD)/compressed_translations.generated.h
 
 CIRCUITPY_DISPLAY_FONT ?= "../../tools/fonts/ter-u12n.bdf"
+CIRCUITPY_FONT_EXTRA_CHARACTERS ?= ""
 
 $(BUILD)/autogen_display_resources-$(TRANSLATION).c: ../../tools/gen_display_resources.py $(TOP)/locale/$(TRANSLATION).po Makefile | $(HEADER_BUILD)
 	$(STEPECHO) "GEN $@"
@@ -270,4 +270,5 @@ $(BUILD)/autogen_display_resources-$(TRANSLATION).c: ../../tools/gen_display_res
 	$(Q)$(PYTHON) ../../tools/gen_display_resources.py \
 		--font $(CIRCUITPY_DISPLAY_FONT) \
 		--sample_file $(TOP)/locale/$(TRANSLATION).po \
+		--extra_characters $(CIRCUITPY_FONT_EXTRA_CHARACTERS) \
 		--output_c_file $@

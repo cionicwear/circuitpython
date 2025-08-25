@@ -25,7 +25,11 @@ mp_obj_t common_hal_synthio_note_get_filter_obj(synthio_note_obj_t *self) {
 }
 
 void common_hal_synthio_note_set_filter(synthio_note_obj_t *self, mp_obj_t filter_in) {
-    synthio_biquad_filter_assign(&self->filter_state, filter_in);
+    if (filter_in != mp_const_none && !mp_obj_is_type(filter_in, &synthio_biquad_type_obj)) {
+        mp_raise_TypeError_varg(
+            MP_ERROR_TEXT("%q must be of type %q, not %q"),
+            MP_QSTR_filter, MP_QSTR_Biquad, mp_obj_get_type(filter_in)->name);
+    }
     self->filter_obj = filter_in;
 }
 
@@ -100,22 +104,20 @@ void common_hal_synthio_note_set_waveform(synthio_note_obj_t *self, mp_obj_t wav
     self->waveform_obj = waveform_in;
 }
 
-mp_int_t common_hal_synthio_note_get_waveform_loop_start(synthio_note_obj_t *self) {
-    return self->waveform_loop_start;
+mp_obj_t common_hal_synthio_note_get_waveform_loop_start(synthio_note_obj_t *self) {
+    return self->waveform_loop_start.obj;
 }
 
-void common_hal_synthio_note_set_waveform_loop_start(synthio_note_obj_t *self, mp_int_t value_in) {
-    mp_int_t val = mp_arg_validate_int_range(value_in, 0, SYNTHIO_WAVEFORM_SIZE - 1, MP_QSTR_waveform_loop_start);
-    self->waveform_loop_start = val;
+void common_hal_synthio_note_set_waveform_loop_start(synthio_note_obj_t *self, mp_obj_t value_in) {
+    synthio_block_assign_slot(value_in, &self->waveform_loop_start, MP_QSTR_waveform_loop_start);
 }
 
-mp_int_t common_hal_synthio_note_get_waveform_loop_end(synthio_note_obj_t *self) {
-    return self->waveform_loop_end;
+mp_obj_t common_hal_synthio_note_get_waveform_loop_end(synthio_note_obj_t *self) {
+    return self->waveform_loop_end.obj;
 }
 
-void common_hal_synthio_note_set_waveform_loop_end(synthio_note_obj_t *self, mp_int_t value_in) {
-    mp_int_t val = mp_arg_validate_int_range(value_in, 1, SYNTHIO_WAVEFORM_SIZE, MP_QSTR_waveform_loop_end);
-    self->waveform_loop_end = val;
+void common_hal_synthio_note_set_waveform_loop_end(synthio_note_obj_t *self, mp_obj_t value_in) {
+    synthio_block_assign_slot(value_in, &self->waveform_loop_end, MP_QSTR_waveform_loop_end);
 }
 
 mp_obj_t common_hal_synthio_note_get_ring_waveform_obj(synthio_note_obj_t *self) {
@@ -133,22 +135,20 @@ void common_hal_synthio_note_set_ring_waveform(synthio_note_obj_t *self, mp_obj_
     self->ring_waveform_obj = ring_waveform_in;
 }
 
-mp_int_t common_hal_synthio_note_get_ring_waveform_loop_start(synthio_note_obj_t *self) {
-    return self->ring_waveform_loop_start;
+mp_obj_t common_hal_synthio_note_get_ring_waveform_loop_start(synthio_note_obj_t *self) {
+    return self->ring_waveform_loop_start.obj;
 }
 
-void common_hal_synthio_note_set_ring_waveform_loop_start(synthio_note_obj_t *self, mp_int_t value_in) {
-    mp_int_t val = mp_arg_validate_int_range(value_in, 0, SYNTHIO_WAVEFORM_SIZE - 1, MP_QSTR_ring_waveform_loop_start);
-    self->ring_waveform_loop_start = val;
+void common_hal_synthio_note_set_ring_waveform_loop_start(synthio_note_obj_t *self, mp_obj_t value_in) {
+    synthio_block_assign_slot(value_in, &self->ring_waveform_loop_start, MP_QSTR_ring_waveform_loop_start);
 }
 
-mp_int_t common_hal_synthio_note_get_ring_waveform_loop_end(synthio_note_obj_t *self) {
-    return self->ring_waveform_loop_end;
+mp_obj_t common_hal_synthio_note_get_ring_waveform_loop_end(synthio_note_obj_t *self) {
+    return self->ring_waveform_loop_end.obj;
 }
 
-void common_hal_synthio_note_set_ring_waveform_loop_end(synthio_note_obj_t *self, mp_int_t value_in) {
-    mp_int_t val = mp_arg_validate_int_range(value_in, 1, SYNTHIO_WAVEFORM_SIZE, MP_QSTR_ring_waveform_loop_end);
-    self->ring_waveform_loop_end = val;
+void common_hal_synthio_note_set_ring_waveform_loop_end(synthio_note_obj_t *self, mp_obj_t value_in) {
+    synthio_block_assign_slot(value_in, &self->ring_waveform_loop_end, MP_QSTR_ring_waveform_loop_end);
 }
 
 void synthio_note_recalculate(synthio_note_obj_t *self, int32_t sample_rate) {

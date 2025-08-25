@@ -30,6 +30,7 @@
 #include "supervisor/cpu.h"
 #include "supervisor/filesystem.h"
 #include "supervisor/port.h"
+#include "supervisor/shared/cpu_regs.h"
 #include "supervisor/shared/reload.h"
 #include "supervisor/shared/safe_mode.h"
 #include "supervisor/shared/serial.h"
@@ -131,9 +132,9 @@ static uint8_t *_allocate_memory(safe_mode_t safe_mode, const char *env_key, siz
     *final_size = default_size;
     #if CIRCUITPY_OS_GETENV
     if (safe_mode == SAFE_MODE_NONE) {
-        (void)common_hal_os_getenv_int(env_key, (mp_int_t *)final_size);
-        if (*final_size < 0) {
-            *final_size = default_size;
+        mp_int_t size;
+        if (common_hal_os_getenv_int(env_key, &size) == GETENV_OK && size > 0) {
+            *final_size = size;
         }
     }
     #endif
@@ -203,6 +204,9 @@ static void start_mp(safe_mode_t safe_mode) {
     mp_obj_list_append(mp_sys_path, MP_OBJ_NEW_QSTR(MP_QSTR__slash_lib));
 
     mp_obj_list_init((mp_obj_list_t *)mp_sys_argv, 0);
+
+    // Always return to root
+    common_hal_os_chdir("/");
 }
 
 static void stop_mp(void) {
@@ -214,6 +218,10 @@ static void stop_mp(void) {
         vfs = vfs->next;
     }
     MP_STATE_VM(vfs_mount_table) = vfs;
+    // The last vfs is CIRCUITPY and the root directory.
+    while (vfs->next != NULL) {
+        vfs = vfs->next;
+    }
     MP_STATE_VM(vfs_cur) = vfs;
     #endif
 
@@ -458,9 +466,12 @@ static bool __attribute__((noinline)) run_code_py(safe_mode_t safe_mode, bool *s
             next_code_configuration->options &= ~SUPERVISOR_NEXT_CODE_OPT_NEWLY_SET;
             next_code_options = next_code_configuration->options;
             if (next_code_configuration->filename[0] != '\0') {
+                if (next_code_configuration->working_directory != NULL) {
+                    common_hal_os_chdir(next_code_configuration->working_directory);
+                }
                 // This is where the user's python code is actually executed:
                 const char *const filenames[] = { next_code_configuration->filename };
-                found_main = maybe_run_list(filenames, MP_ARRAY_SIZE(filenames));
+                found_main = maybe_run_list(filenames, 1);
                 if (!found_main) {
                     serial_write(next_code_configuration->filename);
                     serial_write_compressed(MP_ERROR_TEXT(" not found.\n"));
@@ -571,8 +582,8 @@ static bool __attribute__((noinline)) run_code_py(safe_mode_t safe_mode, bool *s
     size_t total_time = blink_time + LED_SLEEP_TIME_MS;
     #endif
 
-    // This loop is waits after code completes. It waits for fake sleeps to
-    // finish, user input or autoreloads.
+    // This loop is run after code completes. It waits for fake sleeps to
+    // finish, waits for user input, or waits for an autoreload.
     #if CIRCUITPY_ALARM
     bool fake_sleeping = false;
     #endif
@@ -772,6 +783,9 @@ static bool __attribute__((noinline)) run_code_py(safe_mode_t safe_mode, bool *s
     #if CIRCUITPY_ALARM
     if (fake_sleeping) {
         board_init();
+        #if CIRCUITPY_DISPLAYIO
+        common_hal_displayio_auto_primary_display();
+        #endif
         // Pretend that the next run is the first run, as if we were reset.
         *simulate_reset = true;
     }
@@ -860,7 +874,7 @@ static void __attribute__ ((noinline)) run_boot_py(safe_mode_t safe_mode) {
 
         #ifdef CIRCUITPY_BOOT_OUTPUT_FILE
         // Get the base filesystem.
-        fs_user_mount_t *vfs = (fs_user_mount_t *)MP_STATE_VM(vfs_mount_table)->obj;
+        fs_user_mount_t *vfs = filesystem_circuitpy();
         FATFS *fs = &vfs->fatfs;
 
         boot_output = NULL;
@@ -896,12 +910,8 @@ static void __attribute__ ((noinline)) run_boot_py(safe_mode_t safe_mode) {
         #endif
     }
 
-    port_post_boot_py(true);
-
     cleanup_after_vm(_exec_result.exception);
     _exec_result.exception = NULL;
-
-    port_post_boot_py(false);
 }
 
 static int run_repl(safe_mode_t safe_mode) {
@@ -974,7 +984,13 @@ static int run_repl(safe_mode_t safe_mode) {
     return exit_code;
 }
 
+#if defined(__ZEPHYR__) && __ZEPHYR__ == 1
+#include <zephyr/console/console.h>
+
+int circuitpython_main(void) {
+#else
 int __attribute__((used)) main(void) {
+    #endif
 
     // initialise the cpu and peripherals
     set_safe_mode(port_init());
@@ -1047,6 +1063,10 @@ int __attribute__((used)) main(void) {
     // displays init after filesystem, since they could share the flash SPI
     board_init();
 
+    #if CIRCUITPY_DISPLAYIO
+    common_hal_displayio_auto_primary_display();
+    #endif
+
     mp_hal_stdout_tx_str(line_clear);
 
     // This is first time we are running CircuitPython after a reset or power-up.
@@ -1092,9 +1112,6 @@ int __attribute__((used)) main(void) {
             }
             simulate_reset = false;
 
-            // Always return to root before trying to run files.
-            common_hal_os_chdir("/");
-
             if (pyexec_mode_kind == PYEXEC_MODE_FRIENDLY_REPL) {
                 // If code.py did a fake deep sleep, pretend that we
                 // are running code.py for the first time after a hard
@@ -1119,8 +1136,13 @@ int __attribute__((used)) main(void) {
 void gc_collect(void) {
     gc_collect_start();
 
-    mp_uint_t regs[10];
+    // Load register values onto the stack. They get collected below with the rest of the stack.
+    size_t regs[SAVED_REGISTER_COUNT];
     mp_uint_t sp = cpu_get_regs_and_sp(regs);
+
+    // This naively collects all object references from an approximate stack
+    // range.
+    gc_collect_root((void **)sp, ((mp_uint_t)port_stack_get_top() - sp) / sizeof(mp_uint_t));
 
     // This collects root pointers from the VFS mount table. Some of them may
     // have lost their references in the VM even though they are mounted.
@@ -1154,14 +1176,11 @@ void gc_collect(void) {
     common_hal_wifi_gc_collect();
     #endif
 
-    // This naively collects all object references from an approximate stack
-    // range.
-    gc_collect_root((void **)sp, ((mp_uint_t)port_stack_get_top() - sp) / sizeof(mp_uint_t));
     gc_collect_end();
 }
 
 // Ports may provide an implementation of this function if it is needed
-MP_WEAK void port_gc_collect() {
+MP_WEAK void port_gc_collect(void) {
 }
 
 size_t gc_get_max_new_split(void) {

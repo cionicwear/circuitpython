@@ -36,12 +36,16 @@ ifneq ($(USER_C_MODULES),)
 # pre-define USERMOD variables as expanded so that variables are immediate
 # expanded as they're added to them
 
+# Confirm the provided path exists, show abspath if not to make it clearer to fix.
+$(if $(wildcard $(USER_C_MODULES)/.),,$(error USER_C_MODULES doesn't exist: $(abspath $(USER_C_MODULES))))
+
 # C/C++ files that are included in the QSTR/module build
 SRC_USERMOD_C :=
 SRC_USERMOD_CXX :=
-# Other C/C++ files (e.g. libraries or helpers)
+# Other C/C++/Assembly files (e.g. libraries or helpers)
 SRC_USERMOD_LIB_C :=
 SRC_USERMOD_LIB_CXX :=
+SRC_USERMOD_LIB_ASM :=
 # Optionally set flags
 CFLAGS_USERMOD :=
 CXXFLAGS_USERMOD :=
@@ -63,6 +67,7 @@ SRC_USERMOD_PATHFIX_C += $(patsubst $(USER_C_MODULES)/%.c,%.c,$(SRC_USERMOD_C))
 SRC_USERMOD_PATHFIX_CXX += $(patsubst $(USER_C_MODULES)/%.cpp,%.cpp,$(SRC_USERMOD_CXX))
 SRC_USERMOD_PATHFIX_LIB_C += $(patsubst $(USER_C_MODULES)/%.c,%.c,$(SRC_USERMOD_LIB_C))
 SRC_USERMOD_PATHFIX_LIB_CXX += $(patsubst $(USER_C_MODULES)/%.cpp,%.cpp,$(SRC_USERMOD_LIB_CXX))
+SRC_USERMOD_PATHFIX_LIB_ASM += $(patsubst $(USER_C_MODULES)/%.S,%.S,$(SRC_USERMOD_LIB_ASM))
 
 CFLAGS += $(CFLAGS_USERMOD)
 CXXFLAGS += $(CXXFLAGS_USERMOD)
@@ -88,6 +93,7 @@ $(BUILD)/extmod/ulab/code/%.o: CFLAGS += -Os
 endif # CIRCUITPY_ULAB_OPTIMIZE_SIZE
 endif # CIRCUITPY_ULAB
 
+# CIRCUITPY-CHANGE: additional files
 # py object files
 PY_CORE_O_BASENAME = $(addprefix py/,\
 	mpstate.o \
@@ -99,6 +105,8 @@ PY_CORE_O_BASENAME = $(addprefix py/,\
 	nlrmips.o \
 	nlrpowerpc.o \
 	nlrxtensa.o \
+	nlrrv32.o \
+	nlrrv64.o \
 	nlrsetjmp.o \
 	malloc.o \
 	gc.o \
@@ -130,6 +138,10 @@ PY_CORE_O_BASENAME = $(addprefix py/,\
 	emitnxtensa.o \
 	emitinlinextensa.o \
 	emitnxtensawin.o \
+	asmrv32.o \
+	emitnrv32.o \
+	emitinlinerv32.o \
+	emitndebug.o \
 	formatfloat.o \
 	parsenumbase.o \
 	parsenum.o \
@@ -142,6 +154,7 @@ PY_CORE_O_BASENAME = $(addprefix py/,\
 	nativeglue.o \
 	pairheap.o \
 	ringbuf.o \
+	cstack.o \
 	stackctrl.o \
 	argcheck.o \
 	warning.o \
@@ -154,6 +167,7 @@ PY_CORE_O_BASENAME = $(addprefix py/,\
 	objboundmeth.o \
 	objcell.o \
 	objclosure.o \
+	objcode.o \
 	objcomplex.o \
 	objdeque.o \
 	objdict.o \
@@ -222,7 +236,7 @@ PY_O += $(PY_CORE_O)
 
 # object file for frozen code specified via a manifest
 ifneq ($(FROZEN_MANIFEST),)
-PY_O += $(BUILD)/$(BUILD)/frozen_content.o
+PY_O += $(BUILD)/frozen_content.o
 endif
 
 # Sources that may contain qstrings
@@ -321,5 +335,6 @@ endif
 # http://www.emulators.com/docs/nx25_nostradamus.htm
 #-fno-crossjumping
 
+# CIRCUITPY-CHANGE: include extmod.mk here instead of in port/*/Makefile
 # Include rules for extmod related code
 include $(TOP)/extmod/extmod.mk
