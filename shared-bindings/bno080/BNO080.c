@@ -126,12 +126,17 @@ STATIC mp_obj_t bno080_BNO080_deinit(mp_obj_t self_in) {
 }
 MP_DEFINE_CONST_FUN_OBJ_1(bno080_bno080_deinit_obj, bno080_BNO080_deinit);
 
-//|     def deinit(self) -> None:
-//|         """Disable permanently.
+//|     def set_feature(self) -> None:
+//|         """Set the feature configuration.
+//|
+//|         :param feature: The feature to set
+//|         :param refresh_us: The refresh rate in microseconds
+//|         :param batch_us: The batch rate in microseconds
+//|         :param flags: Flags to set
+//|         :param sns: Sensor ID
+//|         :param cfg: Configuration value
 //|
 //|         :return: None"""
-//|
-
 STATIC mp_obj_t bno080_BNO080_set_feature(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     enum { ARG_feature, ARG_refresh_us, ARG_batch_us, ARG_flags, ARG_sns, ARG_cfg, NUM_ARGS };
 
@@ -159,7 +164,13 @@ STATIC mp_obj_t bno080_BNO080_set_feature(size_t n_args, const mp_obj_t *pos_arg
 }
 MP_DEFINE_CONST_FUN_OBJ_KW(bno080_bno080_set_feature_obj, 1, bno080_BNO080_set_feature);
 
-
+//|     def read(self) -> None:
+//|         """Read data from the BNO080
+//|
+//|         :param id: The report ID to read
+//|
+//|         :return: The report data"""
+//|
 STATIC mp_obj_t bno080_bno080_read(mp_obj_t self_in, mp_obj_t id) {
     bno080_BNO080_obj_t *self = (bno080_BNO080_obj_t *)self_in;
     uint32_t report_id = mp_obj_get_int(id);

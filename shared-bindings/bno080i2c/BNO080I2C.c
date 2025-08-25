@@ -140,12 +140,17 @@ STATIC mp_obj_t bno080i2c_BNO080I2C_deinit(mp_obj_t self_in) {
 }
 MP_DEFINE_CONST_FUN_OBJ_1(bno080i2c_bno080i2c_deinit_obj, bno080i2c_BNO080I2C_deinit);
 
-//|     def deinit(self) -> None:
-//|         """Disable permanently.
+//|     def set_feature(self) -> None:
+//|         """Set the feature configuration.
+//|
+//|         :param feature: The feature to set
+//|         :param refresh_us: The refresh rate in microseconds
+//|         :param batch_us: The batch rate in microseconds
+//|         :param flags: Flags to set
+//|         :param sns: Sensor ID
+//|         :param cfg: Configuration value
 //|
 //|         :return: None"""
-//|
-
 STATIC mp_obj_t bno080i2c_BNO080I2C_set_feature(size_t n_args, const mp_obj_t *pos_args, mp_map_t *kw_args) {
     bno080i2c_BNO080I2C_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
     if (self->debug) {
@@ -163,7 +168,6 @@ STATIC mp_obj_t bno080i2c_BNO080I2C_set_feature(size_t n_args, const mp_obj_t *p
         { MP_QSTR_cfg,   MP_ARG_INT | MP_ARG_KW_ONLY, {.u_int = 0} },
     };
 
-    // bno080i2c_BNO080I2C_obj_t *self = MP_OBJ_TO_PTR(pos_args[0]);
     mp_arg_val_t args[MP_ARRAY_SIZE(allowed_args)];
     mp_arg_parse_all(n_args - 1, pos_args + 1, kw_args, MP_ARRAY_SIZE(allowed_args), allowed_args, args);
 
@@ -178,23 +182,14 @@ STATIC mp_obj_t bno080i2c_BNO080I2C_set_feature(size_t n_args, const mp_obj_t *p
 }
 MP_DEFINE_CONST_FUN_OBJ_KW(bno080i2c_bno080i2c_set_feature_obj, 1, bno080i2c_BNO080I2C_set_feature);
 
-// STATIC mp_obj_t bno080i2c_bno080i2c_start(mp_obj_t self_in, mp_obj_t interval) {
-//     bno080i2c_BNO080I2C_obj_t *self = (bno080i2c_BNO080I2C_obj_t *)self_in;
 
-//     common_hal_bno080i2c_BNO080I2C_start(self, mp_obj_get_int(interval));
-
-//     return mp_const_none;
-// }
-// MP_DEFINE_CONST_FUN_OBJ_2(bno080i2c_bno080i2c_start_obj, bno080i2c_bno080i2c_start);
-
-// STATIC mp_obj_t bno080i2c_bno080i2c_stop(mp_obj_t self_in) {
-//     bno080i2c_BNO080I2C_obj_t *self = (bno080i2c_BNO080I2C_obj_t *)self_in;
-//     common_hal_bno080i2c_BNO080I2C_stop(self);
-
-//     return mp_const_none;
-// }
-// MP_DEFINE_CONST_FUN_OBJ_1(bno080i2c_bno080i2c_stop_obj, bno080i2c_bno080i2c_stop);
-
+//|     def read(self) -> None:
+//|         """Read data from the BNO080
+//|
+//|         :param id: The report ID to read
+//|
+//|         :return: The report data"""
+//|
 STATIC mp_obj_t bno080i2c_bno080i2c_read(mp_obj_t self_in, mp_obj_t id) {
     // print that read is called
     bno080i2c_BNO080I2C_obj_t *self = (bno080i2c_BNO080I2C_obj_t *)self_in;
