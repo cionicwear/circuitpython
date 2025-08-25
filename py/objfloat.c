@@ -51,6 +51,13 @@
 #define M_PI (3.14159265358979323846)
 #endif
 
+// Workaround a bug in recent MSVC where NAN is no longer constant.
+// (By redefining back to the previous MSVC definition of NAN)
+#if defined(_MSC_VER) && _MSC_VER >= 1942
+#undef NAN
+#define NAN (-(float)(((float)(1e+300 * 1e+300)) * 0.0F))
+#endif
+
 typedef struct _mp_obj_float_t {
     mp_obj_base_t base;
     mp_float_t value;
@@ -106,7 +113,7 @@ mp_int_t mp_float_hash(mp_float_t src) {
 }
 #endif
 
-STATIC void float_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t kind) {
+static void float_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t kind) {
     (void)kind;
     mp_float_t o_val = mp_obj_float_get(o_in);
     #if MICROPY_FLOAT_IMPL == MICROPY_FLOAT_IMPL_FLOAT
@@ -128,7 +135,7 @@ STATIC void float_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t 
     }
 }
 
-STATIC mp_obj_t float_make_new(const mp_obj_type_t *type_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+static mp_obj_t float_make_new(const mp_obj_type_t *type_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     (void)type_in;
     mp_arg_check_num(n_args, n_kw, 0, 1, false);
 
@@ -153,7 +160,7 @@ STATIC mp_obj_t float_make_new(const mp_obj_type_t *type_in, size_t n_args, size
     }
 }
 
-STATIC mp_obj_t float_unary_op(mp_unary_op_t op, mp_obj_t o_in) {
+static mp_obj_t float_unary_op(mp_unary_op_t op, mp_obj_t o_in) {
     mp_float_t val = mp_obj_float_get(o_in);
     switch (op) {
         case MP_UNARY_OP_BOOL:
@@ -176,7 +183,7 @@ STATIC mp_obj_t float_unary_op(mp_unary_op_t op, mp_obj_t o_in) {
     }
 }
 
-STATIC mp_obj_t float_binary_op(mp_binary_op_t op, mp_obj_t lhs_in, mp_obj_t rhs_in) {
+static mp_obj_t float_binary_op(mp_binary_op_t op, mp_obj_t lhs_in, mp_obj_t rhs_in) {
     mp_float_t lhs_val = mp_obj_float_get(lhs_in);
     #if MICROPY_PY_BUILTINS_COMPLEX
     if (mp_obj_is_type(rhs_in, &mp_type_complex)) {
@@ -186,8 +193,9 @@ STATIC mp_obj_t float_binary_op(mp_binary_op_t op, mp_obj_t lhs_in, mp_obj_t rhs
     return mp_obj_float_binary_op(op, lhs_val, rhs_in);
 }
 
+// CIRCUITPY-CHANGE: Diagnose json.dump on invalid types
 MP_DEFINE_CONST_OBJ_TYPE(
-    mp_type_float, MP_QSTR_float, MP_TYPE_FLAG_EQ_NOT_REFLEXIVE | MP_TYPE_FLAG_EQ_CHECKS_OTHER_TYPE,
+    mp_type_float, MP_QSTR_float, MP_TYPE_FLAG_EQ_NOT_REFLEXIVE | MP_TYPE_FLAG_EQ_CHECKS_OTHER_TYPE | MP_TYPE_FLAG_PRINT_JSON,
     make_new, float_make_new,
     print, float_print,
     unary_op, float_unary_op,
@@ -197,9 +205,8 @@ MP_DEFINE_CONST_OBJ_TYPE(
 #if MICROPY_OBJ_REPR != MICROPY_OBJ_REPR_C && MICROPY_OBJ_REPR != MICROPY_OBJ_REPR_D
 
 mp_obj_t mp_obj_new_float(mp_float_t value) {
-    // Don't use mp_obj_malloc here to avoid extra function call overhead.
-    mp_obj_float_t *o = m_new_obj(mp_obj_float_t);
-    o->base.type = &mp_type_float;
+    // CIRCUITPY-CHANGE: Use mp_obj_malloc because it is a Python object
+    mp_obj_float_t *o = mp_obj_malloc(mp_obj_float_t, &mp_type_float);
     o->value = value;
     return MP_OBJ_FROM_PTR(o);
 }
@@ -212,7 +219,7 @@ mp_float_t mp_obj_float_get(mp_obj_t self_in) {
 
 #endif
 
-STATIC void mp_obj_float_divmod(mp_float_t *x, mp_float_t *y) {
+static void mp_obj_float_divmod(mp_float_t *x, mp_float_t *y) {
     // logic here follows that of CPython
     // https://docs.python.org/3/reference/expressions.html#binary-arithmetic-operations
     // x == (x//y)*y + (x%y)
@@ -270,6 +277,7 @@ mp_obj_t mp_obj_float_binary_op(mp_binary_op_t op, mp_float_t lhs_val, mp_obj_t 
         case MP_BINARY_OP_INPLACE_FLOOR_DIVIDE:
             if (rhs_val == 0) {
             zero_division_error:
+                // CIRCUITPY-CHANGE: a message here is redundant
                 mp_raise_ZeroDivisionError();
             }
             // Python specs require that x == (x//y)*y + (x%y) so we must

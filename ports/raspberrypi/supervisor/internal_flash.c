@@ -23,9 +23,12 @@
 #include "supervisor/flash.h"
 #include "supervisor/usb.h"
 
-#include "src/rp2040/hardware_structs/include/hardware/structs/sio.h"
-#include "src/rp2_common/hardware_flash/include/hardware/flash.h"
-#include "src/common/pico_binary_info/include/pico/binary_info.h"
+#ifdef PICO_RP2350
+#include "hardware/structs/qmi.h"
+#endif
+#include "hardware/structs/sio.h"
+#include "hardware/flash.h"
+#include "pico/binary_info.h"
 
 #if !defined(TOTAL_FLASH_MINIMUM)
 #define TOTAL_FLASH_MINIMUM (2 * 1024 * 1024)
@@ -37,6 +40,27 @@
 static uint8_t _cache[SECTOR_SIZE];
 static uint32_t _cache_lba = NO_CACHE;
 static uint32_t _flash_size = 0;
+#if CIRCUITPY_AUDIOCORE
+static uint32_t _audio_channel_mask;
+#endif
+
+void supervisor_flash_pre_write(void) {
+    // Disable interrupts. XIP accesses will fault during flash writes.
+    common_hal_mcu_disable_interrupts();
+    #if CIRCUITPY_AUDIOCORE
+    // Pause audio DMA to avoid noise while interrupts are disabled.
+    _audio_channel_mask = audio_dma_pause_all();
+    #endif
+}
+
+void supervisor_flash_post_write(void) {
+    #if CIRCUITPY_AUDIOCORE
+    // Unpause audio DMA.
+    audio_dma_unpause_mask(_audio_channel_mask);
+    #endif
+    // Re-enable interrupts.
+    common_hal_mcu_enable_interrupts();
+}
 
 void supervisor_flash_init(void) {
     bi_decl_if_func_used(bi_block_device(
@@ -52,7 +76,9 @@ void supervisor_flash_init(void) {
     // Read the RDID register to get the flash capacity.
     uint8_t cmd[] = {0x9f, 0, 0, 0};
     uint8_t data[4];
+    supervisor_flash_pre_write();
     flash_do_cmd(cmd, data, 4);
+    supervisor_flash_post_write();
     uint8_t power_of_two = FLASH_DEFAULT_POWER_OF_TWO;
     // Flash must be at least 2MB (1 << 21) because we use the first 1MB for the
     // CircuitPython core. We validate the range because Adesto Tech flash chips
@@ -76,19 +102,11 @@ void port_internal_flash_flush(void) {
     if (_cache_lba == NO_CACHE) {
         return;
     }
-    // Make sure we don't have an interrupt while we do flash operations.
-    common_hal_mcu_disable_interrupts();
-    // and audio DMA must be paused as well
-    #if CIRCUITPY_AUDIOCORE
-    uint32_t channel_mask = audio_dma_pause_all();
-    #endif
+    supervisor_flash_pre_write();
     flash_range_erase(CIRCUITPY_CIRCUITPY_DRIVE_START_ADDR + _cache_lba, SECTOR_SIZE);
     flash_range_program(CIRCUITPY_CIRCUITPY_DRIVE_START_ADDR + _cache_lba, _cache, SECTOR_SIZE);
     _cache_lba = NO_CACHE;
-    #if CIRCUITPY_AUDIOCORE
-    audio_dma_unpause_mask(channel_mask);
-    #endif
-    common_hal_mcu_enable_interrupts();
+    supervisor_flash_post_write();
 }
 
 mp_uint_t supervisor_flash_read_blocks(uint8_t *dest, uint32_t block, uint32_t num_blocks) {

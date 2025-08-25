@@ -30,6 +30,7 @@
 #include <stddef.h>
 #include "py/mpprint.h"
 
+// CIRCUITPY-CHANGE
 #include "py/mpconfig.h"
 #include "py/mpstate.h"
 #include "py/misc.h"
@@ -72,18 +73,16 @@ void gc_sweep_all(void);
 
 enum {
     GC_ALLOC_FLAG_HAS_FINALISER = 1,
+    // CIRCUITPY-CHANGE
+    #if MICROPY_ENABLE_SELECTIVE_COLLECT
+    GC_ALLOC_FLAG_DO_NOT_COLLECT = 2,
+    #endif
 };
 
 void *gc_alloc(size_t n_bytes, unsigned int alloc_flags);
 void gc_free(void *ptr); // does not call finaliser
 size_t gc_nbytes(const void *ptr);
-bool gc_has_finaliser(const void *ptr);
 void *gc_realloc(void *ptr, size_t n_bytes, bool allow_move);
-
-// CIRCUITPY-CHANGE
-// Prevents a pointer from ever being freed because it establishes a permanent reference to it. Use
-// very sparingly because it can leak memory.
-bool gc_never_free(void *ptr);
 
 // CIRCUITPY-CHANGE
 // True if the pointer is on the MP heap. Doesn't require that it is the start

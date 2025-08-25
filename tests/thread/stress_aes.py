@@ -11,9 +11,7 @@
 # aggressive by changing the amount of data to encrypt, the number of loops and
 # the number of threads.
 #
-# SPDX-FileCopyrightText: Copyright (c) 2016 Damien P. George on behalf of Pycom Ltd
-#
-# SPDX-License-Identifier: MIT
+# MIT license; Copyright (c) 2016 Damien P. George on behalf of Pycom Ltd
 
 ##################################################################
 # discrete arithmetic routines, mostly from a precomputed table
@@ -275,7 +273,7 @@ if __name__ == "__main__":
     elif sys.platform == "rp2":
         n_thread = 1
         n_loop = 2
-    elif sys.platform in ("esp32", "pyboard"):
+    elif sys.platform in ("esp32", "pyboard", "zephyr"):
         n_thread = 2
         n_loop = 2
     else:
@@ -284,6 +282,6 @@ if __name__ == "__main__":
     for i in range(n_thread):
         _thread.start_new_thread(thread_entry, (n_loop,))
     thread_entry(n_loop)
-    while count.value < n_thread:
+    while count.value < n_thread + 1:
         time.sleep(1)
     print("done")

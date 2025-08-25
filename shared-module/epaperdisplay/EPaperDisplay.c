@@ -33,25 +33,37 @@ void common_hal_epaperdisplay_epaperdisplay_construct(epaperdisplay_epaperdispla
     uint16_t set_column_window_command, uint16_t set_row_window_command,
     uint16_t set_current_column_command, uint16_t set_current_row_command,
     uint16_t write_black_ram_command, bool black_bits_inverted,
-    uint16_t write_color_ram_command, bool color_bits_inverted, uint32_t highlight_color,
+    uint16_t write_color_ram_command, bool color_bits_inverted, uint32_t highlight_color, uint32_t highlight_color2,
     const uint8_t *refresh_sequence, uint16_t refresh_sequence_len, mp_float_t refresh_time,
     const mcu_pin_obj_t *busy_pin, bool busy_state, mp_float_t seconds_per_frame,
-    bool chip_select, bool grayscale, bool acep, bool two_byte_sequence_length, bool address_little_endian) {
+    bool chip_select, bool grayscale, bool acep, bool spectra6, bool two_byte_sequence_length, bool address_little_endian) {
     uint16_t color_depth = 1;
     bool core_grayscale = true;
     if (highlight_color != 0x000000) {
         self->core.colorspace.tricolor = true;
         self->core.colorspace.tricolor_hue = displayio_colorconverter_compute_hue(highlight_color);
-        self->core.colorspace.tricolor_luma = displayio_colorconverter_compute_luma(highlight_color);
     } else {
         self->core.colorspace.tricolor = false;
     }
-    self->acep = acep;
+    if (highlight_color != 0x000000 && highlight_color2 != 0x000000) {
+        self->core.colorspace.tricolor = false;
+        self->core.colorspace.fourcolor = true;
+        self->core.colorspace.fourcolor_hue = displayio_colorconverter_compute_hue(highlight_color2);
+    } else {
+        self->core.colorspace.fourcolor = false;
+    }
+    self->acep = acep || spectra6;
+    self->core.colorspace.sixcolor = spectra6;
     self->core.colorspace.sevencolor = acep;
-    if (acep) {
+    if (self->acep) {
         color_depth = 4; // bits. 7 colors + clean
         grayscale = false;
         core_grayscale = false;
+    }
+    if ((highlight_color != 0x000000 || highlight_color2 != 0x000000) && write_color_ram_command == NO_COMMAND) {
+        color_depth = 2;
+        core_grayscale = false;
+        grayscale = false;
     }
 
     displayio_display_core_construct(&self->core, width, height, rotation, color_depth, core_grayscale, true, 1, true, true);
@@ -89,7 +101,7 @@ void common_hal_epaperdisplay_epaperdisplay_construct(epaperdisplay_epaperdispla
     }
 
     // Clear the color memory if it isn't in use.
-    if (highlight_color == 0x00 && write_color_ram_command != NO_COMMAND) {
+    if (highlight_color == 0x00 && highlight_color2 == 0x00 && write_color_ram_command != NO_COMMAND) {
         // TODO: Clear
     }
 
@@ -157,7 +169,7 @@ static void send_command_sequence(epaperdisplay_epaperdisplay_obj_t *self,
         uint16_t delay_length_ms = 0;
         if (delay) {
             data_size++;
-            delay_length_ms = *(cmd + 1 + data_size);
+            delay_length_ms = *(cmd + 1 + data_size + self->two_byte_sequence_length);
             if (delay_length_ms == 255) {
                 delay_length_ms = 500;
             }
@@ -338,7 +350,7 @@ static bool epaperdisplay_epaperdisplay_refresh_area(epaperdisplay_epaperdisplay
                 } else if (self->core.colorspace.tricolor) {
                     self->core.colorspace.grayscale = false;
                     displayio_display_core_fill_area(&self->core, &subrectangle, mask, buffer);
-                } else if (self->core.colorspace.sevencolor) {
+                } else if (self->core.colorspace.sixcolor || self->core.colorspace.sevencolor) {
                     displayio_display_core_fill_area(&self->core, &subrectangle, mask, buffer);
                 }
             } else {
@@ -360,8 +372,11 @@ static bool epaperdisplay_epaperdisplay_refresh_area(epaperdisplay_epaperdisplay
             self->bus.send(self->bus.bus, DISPLAY_DATA, self->chip_select, (uint8_t *)buffer, subrectangle_size_bytes);
             displayio_display_bus_end_transaction(&self->bus);
 
-            // TODO(tannewt): Make refresh displays faster so we don't starve other
-            // background tasks.
+            // Run background tasks so they can run during an explicit refresh.
+            // Auto-refresh won't run background tasks here because it is a background task itself.
+            RUN_BACKGROUND_TASKS;
+
+            // Run USB background tasks so they can run during an implicit refresh.
             #if CIRCUITPY_TINYUSB
             usb_background();
             #endif

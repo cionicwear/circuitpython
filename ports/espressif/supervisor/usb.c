@@ -20,15 +20,7 @@
 #include "driver/gpio.h"
 #include "esp_private/periph_ctrl.h"
 
-#if defined(CONFIG_IDF_TARGET_ESP32C3)
-#include "components/esp_rom/include/esp32c3/rom/gpio.h"
-#elif defined(CONFIG_IDF_TARGET_ESP32C6)
-#include "components/esp_rom/include/esp32c6/rom/gpio.h"
-#elif defined(CONFIG_IDF_TARGET_ESP32S2)
-#include "components/esp_rom/include/esp32s2/rom/gpio.h"
-#elif defined(CONFIG_IDF_TARGET_ESP32S3)
-#include "components/esp_rom/include/esp32s3/rom/gpio.h"
-#endif
+#include "rom/gpio.h"
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -94,7 +86,12 @@ void init_usb_hardware(void) {
     // Configure USB PHY
     usb_phy_config_t phy_conf = {
         .controller = USB_PHY_CTRL_OTG,
+        .target = USB_PHY_TARGET_INT,
+
         .otg_mode = USB_OTG_MODE_DEVICE,
+        // https://github.com/hathach/tinyusb/issues/2943#issuecomment-2601888322
+        // Set speed to undefined (auto-detect) to avoid timing/race issue with S3 with host such as macOS
+        .otg_speed = USB_PHY_SPEED_UNDEFINED,
     };
     usb_new_phy(&phy_conf, &phy_hdl);
 

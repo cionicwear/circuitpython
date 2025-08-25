@@ -14,8 +14,8 @@
 #include "common-hal/microcontroller/Pin.h"
 #include "shared-bindings/microcontroller/Pin.h"
 
-#include "src/rp2_common/hardware_dma/include/hardware/dma.h"
-#include "src/rp2_common/hardware_gpio/include/hardware/gpio.h"
+#include "hardware/dma.h"
+#include "hardware/gpio.h"
 
 #define NO_INSTANCE 0xff
 
@@ -150,6 +150,9 @@ bool common_hal_busio_spi_configure(busio_spi_obj_t *self,
 }
 
 bool common_hal_busio_spi_try_lock(busio_spi_obj_t *self) {
+    if (common_hal_busio_spi_deinited(self)) {
+        return false;
+    }
     bool grabbed_lock = false;
     if (!self->has_lock) {
         grabbed_lock = true;

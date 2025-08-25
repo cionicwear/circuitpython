@@ -24,6 +24,7 @@
  * THE SOFTWARE.
  */
 
+// CIRCUITPY-CHANGE
 #pragma once
 
 // Options to control how MicroPython is built for this port, overriding
@@ -40,6 +41,7 @@
 // CIRCUITPY-CHANGE
 #define CIRCUITPY_MICROPYTHON_ADVANCED (1)
 #define MICROPY_PY_ASYNC_AWAIT (1)
+#define MICROPY_PY_UCTYPES (0)
 
 #ifndef MICROPY_CONFIG_ROM_LEVEL
 #define MICROPY_CONFIG_ROM_LEVEL (MICROPY_CONFIG_ROM_LEVEL_CORE_FEATURES)
@@ -110,8 +112,10 @@ typedef long mp_off_t;
 
 // Always enable GC.
 #define MICROPY_ENABLE_GC           (1)
+// CIRCUITPY-CHANGE
+#define MICROPY_ENABLE_SELECTIVE_COLLECT (1)
 
-#if !(defined(MICROPY_GCREGS_SETJMP) || defined(__x86_64__) || defined(__i386__) || defined(__thumb2__) || defined(__thumb__) || defined(__arm__))
+#if !(defined(MICROPY_GCREGS_SETJMP) || defined(__x86_64__) || defined(__i386__) || defined(__thumb2__) || defined(__thumb__) || defined(__arm__) || (defined(__riscv) && (__riscv_xlen == 64)))
 // Fall back to setjmp() implementation for discovery of GC pointers in registers.
 #define MICROPY_GCREGS_SETJMP (1)
 #endif
@@ -123,8 +127,9 @@ typedef long mp_off_t;
 #define MICROPY_HELPER_LEXER_UNIX   (1)
 #define MICROPY_VFS_POSIX           (1)
 #define MICROPY_READER_POSIX        (1)
+// CIRCUITPY-CHANGE: define no matter what
 #ifndef MICROPY_TRACKED_ALLOC
-#define MICROPY_TRACKED_ALLOC       (MICROPY_BLUETOOTH_BTSTACK)
+#define MICROPY_TRACKED_ALLOC       (MICROPY_PY_FFI || MICROPY_BLUETOOTH_BTSTACK)
 #endif
 
 // VFS stat functions should return time values relative to 1970/1/1
@@ -140,6 +145,9 @@ typedef long mp_off_t;
 #define MICROPY_STACKLESS_STRICT    (0)
 #endif
 
+// Implementation of the machine module.
+#define MICROPY_PY_MACHINE_INCLUDEFILE "ports/unix/modmachine.c"
+
 // Unix-specific configuration of machine.mem*.
 #define MICROPY_MACHINE_MEM_GET_READ_ADDR   mod_machine_mem_get_addr
 #define MICROPY_MACHINE_MEM_GET_WRITE_ADDR  mod_machine_mem_get_addr
@@ -148,7 +156,9 @@ typedef long mp_off_t;
 #define MICROPY_FATFS_RPATH            (2)
 #define MICROPY_FATFS_MAX_SS           (4096)
 #define MICROPY_FATFS_LFN_CODE_PAGE    437 /* 1=SFN/ANSI 437=LFN/U.S.(OEM) */
+// CIRCUITPY-CHANGE: enable FAT32 support
 #define MICROPY_FATFS_MKFS_FAT32       (1)
+// CIRCUITPY-CHANGE: allow FAT label access
 #define MICROPY_FATFS_USE_LABEL (1)
 
 #define MICROPY_ALLOC_PATH_MAX      (PATH_MAX)
@@ -173,14 +183,8 @@ extern const struct _mp_print_t mp_stderr_print;
 // For the native emitter configure how to mark a region as executable.
 void mp_unix_alloc_exec(size_t min_size, void **ptr, size_t *size);
 void mp_unix_free_exec(void *ptr, size_t size);
-void mp_unix_mark_exec(void);
 #define MP_PLAT_ALLOC_EXEC(min_size, ptr, size) mp_unix_alloc_exec(min_size, ptr, size)
 #define MP_PLAT_FREE_EXEC(ptr, size) mp_unix_free_exec(ptr, size)
-#ifndef MICROPY_FORCE_PLAT_ALLOC_EXEC
-// Use MP_PLAT_ALLOC_EXEC for any executable memory allocation, including for FFI
-// (overriding libffi own implementation)
-#define MICROPY_FORCE_PLAT_ALLOC_EXEC (1)
-#endif
 
 // If enabled, configure how to seed random on init.
 #ifdef MICROPY_PY_RANDOM_SEED_INIT_FUNC
@@ -224,22 +228,6 @@ static inline unsigned long mp_random_seed_init(void) {
 #ifndef __APPLE__
 // For debugging purposes, make printf() available to any source file.
 #include <stdio.h>
-#endif
-
-// If threading is enabled, configure the atomic section.
-#if MICROPY_PY_THREAD
-#define MICROPY_BEGIN_ATOMIC_SECTION() (mp_thread_unix_begin_atomic_section(), 0xffffffff)
-#define MICROPY_END_ATOMIC_SECTION(x) (void)x; mp_thread_unix_end_atomic_section()
-#endif
-
-// In lieu of a WFI(), slow down polling from being a tight loop.
-#ifndef MICROPY_EVENT_POLL_HOOK
-#define MICROPY_EVENT_POLL_HOOK \
-    do { \
-        extern void mp_handle_pending(bool); \
-        mp_handle_pending(true); \
-        usleep(500); /* equivalent to mp_hal_delay_us(500) */ \
-    } while (0);
 #endif
 
 // Configure the implementation of machine.idle().

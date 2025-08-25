@@ -1,11 +1,10 @@
 # test importing of .mpy files with native code
 
 try:
-    import sys, io, os
+    import sys, io, vfs
 
     sys.implementation._mpy
     io.IOBase
-    os.mount
 except (ImportError, AttributeError):
     print("SKIP")
     raise SystemExit
@@ -29,7 +28,9 @@ class UserFile(io.IOBase):
         return n
 
     def ioctl(self, req, arg):
-        return 0
+        if req == 4:  # MP_STREAM_CLOSE
+            return 0
+        return -1
 
 
 class UserFS:
@@ -52,10 +53,12 @@ class UserFS:
 
 
 # these are the test .mpy files
+# CIRCUITPY-CHANGE
 valid_header = bytes([ord("C"), 6, mpy_arch, 31])
 # fmt: off
 user_files = {
     # bad architecture (mpy_arch needed for sub-version)
+    # CIRCUITPY-CHANGE
     '/mod0.mpy': bytes([ord('C'), 6, 0xfc | mpy_arch, 31]),
 
     # test loading of viper and asm
@@ -110,7 +113,7 @@ user_files = {
 # fmt: on
 
 # create and mount a user filesystem
-os.mount(UserFS(user_files), "/userfs")
+vfs.mount(UserFS(user_files), "/userfs")
 sys.path.append("/userfs")
 
 # import .mpy files from the user filesystem
@@ -123,5 +126,5 @@ for i in range(len(user_files)):
         print(mod, "ValueError", er)
 
 # unmount and undo path addition
-os.umount("/userfs")
+vfs.umount("/userfs")
 sys.path.pop()

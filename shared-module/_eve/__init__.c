@@ -75,7 +75,7 @@ void common_hal__eve_BitmapExtFormat(common_hal__eve_t *eve, uint32_t fmt) {
 
 
 void common_hal__eve_BitmapHandle(common_hal__eve_t *eve, uint32_t handle) {
-    C4(eve, ((5 << 24) | ((handle & 31))));
+    C4(eve, ((5 << 24) | ((handle & 63))));
 }
 
 
@@ -101,6 +101,11 @@ void common_hal__eve_BitmapSize(common_hal__eve_t *eve, uint32_t filter, uint32_
 
 void common_hal__eve_BitmapSource(common_hal__eve_t *eve, uint32_t addr) {
     C4(eve, ((1 << 24) | ((addr & 0xffffff))));
+}
+
+
+void common_hal__eve_BitmapSourceH(common_hal__eve_t *eve, uint32_t addr) {
+    C4(eve, ((49 << 24) | ((addr & 0xff))));
 }
 
 
@@ -175,7 +180,7 @@ void common_hal__eve_ClearStencil(common_hal__eve_t *eve, uint32_t s) {
 
 
 void common_hal__eve_ClearTag(common_hal__eve_t *eve, uint32_t s) {
-    C4(eve, ((18 << 24) | ((s & 255))));
+    C4(eve, ((18 << 24) | ((s & 0xffffff))));
 }
 
 
@@ -226,13 +231,23 @@ void common_hal__eve_Nop(common_hal__eve_t *eve) {
 
 
 void common_hal__eve_PaletteSource(common_hal__eve_t *eve, uint32_t addr) {
-    C4(eve, ((42 << 24) | (((addr) & 4194303))));
+    C4(eve, ((42 << 24) | (((addr) & 0xffffff))));
+}
+
+
+void common_hal__eve_PaletteSourceH(common_hal__eve_t *eve, uint32_t addr) {
+    C4(eve, ((50 << 24) | (((addr) & 0xff))));
 }
 
 
 void common_hal__eve_PointSize(common_hal__eve_t *eve, mp_float_t size) {
     int16_t is = (int)(8 * size);
     C4(eve, ((13 << 24) | ((is & 8191))));
+}
+
+
+void common_hal__eve_Region(common_hal__eve_t *eve, uint32_t y, uint32_t h, uint32_t dest) {
+    C4(eve, ((52 << 24) | ((y & 0x3f) << 18) | ((h & 0x3f) << 12) | (dest & 0xfff)));
 }
 
 
@@ -282,7 +297,7 @@ void common_hal__eve_TagMask(common_hal__eve_t *eve, uint32_t mask) {
 
 
 void common_hal__eve_Tag(common_hal__eve_t *eve, uint32_t s) {
-    C4(eve, ((3 << 24) | ((s & 255))));
+    C4(eve, ((3 << 24) | ((s & 0xffffff))));
 }
 
 
