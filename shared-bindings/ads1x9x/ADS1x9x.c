@@ -43,7 +43,7 @@
 //|     Interacts with an ADS1x9x over SPI."""
 //|
 //|     def __init__(
-//|         self, bus: busio.SPI, cs: microcontroller.Pin, rst: microcontroller.Pin, 
+//|         self, bus: busio.SPI, cs: microcontroller.Pin, rst: microcontroller.Pin,
 //|         drdy: microcontroller.Pin, start: microcontroller.Pin, pwdn: microcontroller.Pin
 //|     ) -> None:
 //|         """Construct an SPI ADS1x9x object with the given properties
@@ -64,9 +64,9 @@
 //|             import board
 //|             import ads1x9x
 //|
-//|             ads = ads1x9x.ADS1x9x(board.SPI(), board.ADS_CS, board.ADS_RST, board.ADS_DRDY, board.ADS_START, board.ADS_PWDN)
+//|             ads = ads1x9x.ADS1x9x(board.SPI(), board.ADS_CS, board.ADS_RST, board.ADS_DRDY, board.ADS_START, board.ADS_PWDN)"""
 
-STATIC mp_obj_t ads1x9x_ads1x9x_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
+static mp_obj_t ads1x9x_ads1x9x_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     enum { ARG_spi, ARG_cs, ARG_rst, ARG_drdy, ARG_start, ARG_pwdn, NUM_ARGS };
     static const mp_arg_t allowed_args[] = {
         { MP_QSTR_spi, MP_ARG_OBJ, {.u_obj = mp_const_none } },
@@ -99,7 +99,7 @@ STATIC mp_obj_t ads1x9x_ads1x9x_make_new(const mp_obj_type_t *type, size_t n_arg
 //|         """Reset the ADS1x9x
 //|
 //|         :return: None"""
-STATIC mp_obj_t ads1x9x_ads1x9x_reset(mp_obj_t self_in) {
+static mp_obj_t ads1x9x_ads1x9x_reset(mp_obj_t self_in) {
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)self_in;
     common_hal_ads1x9x_ADS1x9x_reset(self);
     return mp_const_none;
@@ -110,7 +110,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(ads1x9x_ads1x9x_reset_obj, ads1x9x_ads1x9x_reset);
 //|         """Get the ADS1x9x sample size
 //|
 //|         :return: Sample size"""
-STATIC mp_obj_t ads1x9x_ads1x9x_sample_size_get(mp_obj_t self_in) {
+static mp_obj_t ads1x9x_ads1x9x_sample_size_get(mp_obj_t self_in) {
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)self_in;
     return mp_obj_new_int_from_uint(common_hal_ads1x9x_ADS1x9x_sample_size_get(self));
 }
@@ -122,7 +122,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(ads1x9x_ads1x9x_sample_size_get_obj, ads1x9x_ads1x9x_s
 //|         :param int filter: The filter enum to write
 //|         :return: None"""
 
-STATIC mp_obj_t ads1x9x_ads1x9x_filter_set(mp_obj_t self_in, mp_obj_t filter) {
+static mp_obj_t ads1x9x_ads1x9x_filter_set(mp_obj_t self_in, mp_obj_t filter) {
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)self_in;
     uint32_t filt = mp_obj_get_int(filter);
     common_hal_ads1x9x_ADS1x9x_filter_set(self, (uint8_t)filt);
@@ -136,7 +136,7 @@ MP_DEFINE_CONST_FUN_OBJ_2(ads1x9x_ads1x9x_filter_set_obj, ads1x9x_ads1x9x_filter
 //|         :param int address: The register address to read from
 //|         :return: register value"""
 
-STATIC mp_obj_t ads1x9x_ads1x9x_read_reg(mp_obj_t self_in, mp_obj_t reg_addr) {
+static mp_obj_t ads1x9x_ads1x9x_read_reg(mp_obj_t self_in, mp_obj_t reg_addr) {
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)self_in;
     uint32_t addr = mp_obj_get_int(reg_addr);
     return mp_obj_new_int_from_uint(common_hal_ads1x9x_ADS1x9x_read_reg(self, (uint8_t)addr));
@@ -150,7 +150,7 @@ MP_DEFINE_CONST_FUN_OBJ_2(ads1x9x_ads1x9x_read_reg_obj, ads1x9x_ads1x9x_read_reg
 //|         :param int value: The value address to write
 //|         :return: None"""
 
-STATIC mp_obj_t ads1x9x_ads1x9x_write_reg(mp_obj_t self_in, mp_obj_t reg_addr, mp_obj_t value) {
+static mp_obj_t ads1x9x_ads1x9x_write_reg(mp_obj_t self_in, mp_obj_t reg_addr, mp_obj_t value) {
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)self_in;
     uint32_t addr = mp_obj_get_int(reg_addr);
     uint32_t val = mp_obj_get_int(value);
@@ -166,7 +166,7 @@ MP_DEFINE_CONST_FUN_OBJ_3(ads1x9x_ads1x9x_write_reg_obj, ads1x9x_ads1x9x_write_r
 //|
 //|         :return: None"""
 
-STATIC mp_obj_t ads1x9x_ads1x9x_start(mp_obj_t self_in) {
+static mp_obj_t ads1x9x_ads1x9x_start(mp_obj_t self_in) {
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)self_in;
 
     common_hal_ads1x9x_ADS1x9x_start(self);
@@ -180,7 +180,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(ads1x9x_ads1x9x_start_obj, ads1x9x_ads1x9x_start);
 //|
 //|         :return: None"""
 
-STATIC mp_obj_t ads1x9x_ads1x9x_stop(mp_obj_t self_in) {
+static mp_obj_t ads1x9x_ads1x9x_stop(mp_obj_t self_in) {
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)self_in;
 
     common_hal_ads1x9x_ADS1x9x_stop(self);
@@ -195,7 +195,7 @@ MP_DEFINE_CONST_FUN_OBJ_1(ads1x9x_ads1x9x_stop_obj, ads1x9x_ads1x9x_stop);
 //|         :param buffer: Buffer to write data to
 //|         :return: size read"""
 
-STATIC mp_obj_t ads1x9x_ads1x9x_read(mp_obj_t self_in, mp_obj_t buf_in, mp_obj_t buf_size) {
+static mp_obj_t ads1x9x_ads1x9x_read(mp_obj_t self_in, mp_obj_t buf_in, mp_obj_t buf_size) {
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)self_in;
     mp_buffer_info_t bufinfo;
     uint32_t buf_sz = mp_obj_get_int(buf_size);
@@ -204,20 +204,20 @@ STATIC mp_obj_t ads1x9x_ads1x9x_read(mp_obj_t self_in, mp_obj_t buf_in, mp_obj_t
     return mp_obj_new_int_from_uint((uint32_t)common_hal_ads1x9x_ADS1x9x_read(self, &bufinfo, buf_sz));
 }
 
-STATIC MP_DEFINE_CONST_FUN_OBJ_3(ads1x9x_ads1x9x_read_obj, ads1x9x_ads1x9x_read);
+static MP_DEFINE_CONST_FUN_OBJ_3(ads1x9x_ads1x9x_read_obj, ads1x9x_ads1x9x_read);
 
 //|     def deinit(self) -> None:
 //|         """Disable permanently.
 //|
 //|         :return: None"""
-STATIC mp_obj_t ads1x9x_ads1x9x_deinit(mp_obj_t self_in) {
+static mp_obj_t ads1x9x_ads1x9x_deinit(mp_obj_t self_in) {
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)self_in;
     common_hal_ads1x9x_ADS1x9x_deinit(self);
     return mp_const_none;
 }
 MP_DEFINE_CONST_FUN_OBJ_1(ads1x9x_ads1x9x_deinit_obj, ads1x9x_ads1x9x_deinit);
 
-STATIC const mp_rom_map_elem_t ads1x9x_ads1x9x_locals_dict_table[] = {
+static const mp_rom_map_elem_t ads1x9x_ads1x9x_locals_dict_table[] = {
     { MP_ROM_QSTR(MP_QSTR_reset), MP_ROM_PTR(&ads1x9x_ads1x9x_reset_obj) },
     { MP_ROM_QSTR(MP_QSTR_sample_size_get), MP_ROM_PTR(&ads1x9x_ads1x9x_sample_size_get_obj) },
     { MP_ROM_QSTR(MP_QSTR_filter_set), MP_ROM_PTR(&ads1x9x_ads1x9x_filter_set_obj) },
@@ -228,7 +228,7 @@ STATIC const mp_rom_map_elem_t ads1x9x_ads1x9x_locals_dict_table[] = {
     // { MP_OBJ_NEW_QSTR(MP_QSTR_read), MP_ROM_PTR(&mp_stream_read_obj) },
     { MP_ROM_QSTR(MP_QSTR_read), MP_ROM_PTR(&ads1x9x_ads1x9x_read_obj) },
 };
-STATIC MP_DEFINE_CONST_DICT(ads1x9x_ads1x9x_locals_dict, ads1x9x_ads1x9x_locals_dict_table);
+static MP_DEFINE_CONST_DICT(ads1x9x_ads1x9x_locals_dict, ads1x9x_ads1x9x_locals_dict_table);
 
 MP_DEFINE_CONST_OBJ_TYPE(
     ads1x9x_ADS1x9x_type,

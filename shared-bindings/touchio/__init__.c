@@ -28,6 +28,10 @@
 //| For more information about working with the `touchio` module in CircuitPython,
 //| see `this Learn guide page <https://learn.adafruit.com/circuitpython-essentials/circuitpython-cap-touch>`_.
 //|
+//| **Limitations**: `touchio` on RP2350 must have a pull-up resistor to 3.3V
+//| instead of ground and set the ``pull=Pull.UP`` parameter when constructing
+//| a `TouchIn` object, due to GPIO hardware limitations.
+//|
 //| Example::
 //|
 //|   import touchio
@@ -37,7 +41,8 @@
 //|   print(touch_pin.value)
 //|
 //| This example will initialize the the device, and print the
-//| :py:data:`~touchio.TouchIn.value`."""
+//| :py:data:`~touchio.TouchIn.value`.
+//| """
 
 static const mp_rom_map_elem_t touchio_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_touchio) },

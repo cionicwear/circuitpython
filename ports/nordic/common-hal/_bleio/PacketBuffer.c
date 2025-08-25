@@ -278,14 +278,14 @@ void common_hal_bleio_packet_buffer_construct(
     uint32_t *incoming_buffer = NULL;
     if (incoming) {
         incoming_buffer_size = buffer_size * (sizeof(uint16_t) + max_packet_size);
-        incoming_buffer = m_malloc(incoming_buffer_size);
+        incoming_buffer = m_malloc_without_collect(incoming_buffer_size);
     }
 
     uint32_t *outgoing1 = NULL;
     uint32_t *outgoing2 = NULL;
     if (outgoing) {
-        outgoing1 = m_malloc(max_packet_size);
-        outgoing2 = m_malloc(max_packet_size);
+        outgoing1 = m_malloc_without_collect(max_packet_size);
+        outgoing2 = m_malloc_without_collect(max_packet_size);
     }
     _common_hal_bleio_packet_buffer_construct(self, characteristic,
         incoming_buffer, incoming_buffer_size,
@@ -484,4 +484,8 @@ void common_hal_bleio_packet_buffer_deinit(bleio_packet_buffer_obj_t *self) {
         ble_drv_remove_event_handler(packet_buffer_on_ble_client_evt, self);
         ringbuf_deinit(&self->ringbuf);
     }
+}
+
+bool common_hal_bleio_packet_buffer_connected(bleio_packet_buffer_obj_t *self) {
+    return !common_hal_bleio_packet_buffer_deinited(self) && self->conn_handle != BLE_CONN_HANDLE_INVALID;
 }

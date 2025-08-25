@@ -36,7 +36,7 @@ typedef struct _mp_obj_closure_t {
     mp_obj_t closed[];
 } mp_obj_closure_t;
 
-STATIC mp_obj_t closure_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
+static mp_obj_t closure_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const mp_obj_t *args) {
     mp_obj_closure_t *self = MP_OBJ_TO_PTR(self_in);
 
     // need to concatenate closed-over-vars and args
@@ -50,7 +50,8 @@ STATIC mp_obj_t closure_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const
         return mp_call_function_n_kw(self->fun, self->n_closed + n_args, n_kw, args2);
     } else {
         // use heap to allocate temporary args array
-        mp_obj_t *args2 = m_new(mp_obj_t, n_total);
+        // CIRCUITPY-CHANGE
+        mp_obj_t *args2 = m_malloc_items(n_total);
         memcpy(args2, self->closed, self->n_closed * sizeof(mp_obj_t));
         memcpy(args2 + self->n_closed, args, (n_args + 2 * n_kw) * sizeof(mp_obj_t));
         mp_obj_t res = mp_call_function_n_kw(self->fun, self->n_closed + n_args, n_kw, args2);
@@ -60,7 +61,7 @@ STATIC mp_obj_t closure_call(mp_obj_t self_in, size_t n_args, size_t n_kw, const
 }
 
 #if MICROPY_ERROR_REPORTING == MICROPY_ERROR_REPORTING_DETAILED
-STATIC void closure_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t kind) {
+static void closure_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_t kind) {
     (void)kind;
     mp_obj_closure_t *o = MP_OBJ_TO_PTR(o_in);
     mp_print_str(print, "<closure ");
@@ -79,7 +80,7 @@ STATIC void closure_print(const mp_print_t *print, mp_obj_t o_in, mp_print_kind_
 #endif
 
 #if MICROPY_PY_FUNCTION_ATTRS
-STATIC void mp_obj_closure_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
+static void mp_obj_closure_attr(mp_obj_t self_in, qstr attr, mp_obj_t *dest) {
     // forward to self_in->fun
     mp_obj_closure_t *o = MP_OBJ_TO_PTR(self_in);
     mp_load_method_maybe(o->fun, attr, dest);
@@ -105,7 +106,7 @@ MP_DEFINE_CONST_OBJ_TYPE(
     );
 
 mp_obj_t mp_obj_new_closure(mp_obj_t fun, size_t n_closed_over, const mp_obj_t *closed) {
-    mp_obj_closure_t *o = mp_obj_malloc_var(mp_obj_closure_t, mp_obj_t, n_closed_over, &mp_type_closure);
+    mp_obj_closure_t *o = mp_obj_malloc_var(mp_obj_closure_t, closed, mp_obj_t, n_closed_over, &mp_type_closure);
     o->fun = fun;
     o->n_closed = n_closed_over;
     memcpy(o->closed, closed, n_closed_over * sizeof(mp_obj_t));

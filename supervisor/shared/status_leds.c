@@ -112,7 +112,7 @@ static uint32_t current_status_color = 0;
 #endif
 
 static bool status_led_init_in_progress = false;
-void status_led_init() {
+void status_led_init(void) {
     if (status_led_init_in_progress) {
         // Avoid recursion.
         return;
@@ -170,7 +170,7 @@ void status_led_init() {
         common_hal_pwmio_pwmout_construct(&rgb_status_b, CIRCUITPY_RGB_STATUS_B, 0, 50000, false);
     }
 
-    #elif defined(MICROPY_HW_LED_STATUS)
+    #elif CIRCUITPY_DIGITALIO && defined(MICROPY_HW_LED_STATUS)
     common_hal_digitalio_digitalinout_construct(&single_color_led, MICROPY_HW_LED_STATUS);
     common_hal_digitalio_digitalinout_switch_to_output(
         &single_color_led, MICROPY_HW_LED_STATUS_INVERTED == 0, DRIVE_MODE_PUSH_PULL);
@@ -186,7 +186,7 @@ void status_led_init() {
     status_led_init_in_progress = false;
 }
 
-void status_led_deinit() {
+void status_led_deinit(void) {
     #ifdef MICROPY_HW_NEOPIXEL
     // Make sure the pin stays low for the reset period. The pin reset may pull
     // it up and stop the reset period.
@@ -196,8 +196,10 @@ void status_led_deinit() {
 
     #elif defined(MICROPY_HW_APA102_MOSI) && defined(MICROPY_HW_APA102_SCK)
     #if CIRCUITPY_BITBANG_APA102
+    shared_module_bitbangio_spi_unlock(&status_apa102);
     shared_module_bitbangio_spi_deinit(&status_apa102);
     #else
+    common_hal_busio_spi_unlock(&status_apa102);
     common_hal_busio_spi_deinit(&status_apa102);
     #endif
 
@@ -214,7 +216,7 @@ void status_led_deinit() {
         common_hal_pwmio_pwmout_deinit(&rgb_status_b);
     }
 
-    #elif defined(MICROPY_HW_LED_STATUS)
+    #elif CIRCUITPY_DIGITALIO && defined(MICROPY_HW_LED_STATUS)
     common_hal_digitalio_digitalinout_deinit(&single_color_led);
     #endif
 

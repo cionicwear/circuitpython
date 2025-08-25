@@ -148,6 +148,7 @@ void board_init(void) {
         NO_COMMAND,  // write_color_ram_command
         false,  // color_bits_inverted
         0x000000,  // highlight_color
+        0x000000,  // highlight_color2
         refresh_sequence, sizeof(refresh_sequence),
         28.0,  // refresh_time
         NULL,  // busy_pin
@@ -156,6 +157,7 @@ void board_init(void) {
         false,  // always_toggle_chip_select
         false, // grayscale
         true, // acep
+        false, // spectra6
         false,  // two_byte_sequence_length
         false); // address_little_endian
 }

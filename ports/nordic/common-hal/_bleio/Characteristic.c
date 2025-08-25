@@ -81,7 +81,7 @@ void common_hal_bleio_characteristic_construct(bleio_characteristic_obj_t *self,
         self->initial_value_len = initial_value_bufinfo->len;
         if (gc_alloc_possible()) {
             if (gc_nbytes(initial_value_bufinfo->buf) > 0) {
-                uint8_t *initial_value = m_malloc(self->initial_value_len);
+                uint8_t *initial_value = m_malloc_without_collect(self->initial_value_len);
                 memcpy(initial_value, initial_value_bufinfo->buf, self->initial_value_len);
                 self->initial_value = initial_value;
             } else {
@@ -107,6 +107,19 @@ void common_hal_bleio_characteristic_construct(bleio_characteristic_obj_t *self,
     } else {
         common_hal_bleio_service_add_characteristic(self->service, self, initial_value_bufinfo, user_description);
     }
+}
+
+bool common_hal_bleio_characteristic_deinited(bleio_characteristic_obj_t *self) {
+    return self->handle == BLE_GATT_HANDLE_INVALID;
+}
+
+void common_hal_bleio_characteristic_deinit(bleio_characteristic_obj_t *self) {
+    if (common_hal_bleio_characteristic_deinited(self)) {
+        return;
+    }
+    self->handle = BLE_GATT_HANDLE_INVALID;
+    // TODO: Can we remove this from the soft device? Right now we assume the
+    // reset clears things.
 }
 
 mp_obj_tuple_t *common_hal_bleio_characteristic_get_descriptors(bleio_characteristic_obj_t *self) {

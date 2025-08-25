@@ -13,10 +13,10 @@
 #include "shared-bindings/pwmio/PWMOut.h"
 #include "shared-bindings/microcontroller/__init__.h"
 #include "common-hal/pwmio/PWMOut.h"
-#include "src/rp2040/hardware_structs/include/hardware/structs/pwm.h"
-#include "src/rp2_common/hardware_gpio/include/hardware/gpio.h"
-#include "src/rp2_common/hardware_pwm/include/hardware/pwm.h"
-#include "src/common/pico_time/include/pico/time.h"
+#include "hardware/structs/pwm.h"
+#include "hardware/gpio.h"
+#include "hardware/pwm.h"
+#include "pico/time.h"
 
 volatile alarm_id_t cur_alarm = 0;
 

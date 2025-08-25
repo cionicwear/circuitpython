@@ -10,14 +10,16 @@ except AttributeError:
     print("SKIP")
     raise SystemExit
 
+import sys
+
 
 def multiply(m):
     return str(int(m.group(0)) * 2)
 
 
-print(re.sub("\d+", multiply, "10 20 30 40 50"))
+print(re.sub(r"\d+", multiply, "10 20 30 40 50"))
 
-print(re.sub("\d+", lambda m: str(int(m.group(0)) // 2), "10 20 30 40 50"))
+print(re.sub(r"\d+", lambda m: str(int(m.group(0)) // 2), "10 20 30 40 50"))
 
 
 def A():
@@ -47,7 +49,12 @@ print(re.sub("(abc)", r"\g<1>\g<1>", "abc"))
 print(re.sub("a", "b", "c"))
 
 # with maximum substitution count specified
-print(re.sub("a", "b", "1a2a3a", 2))
+# CIRCUITPY-CHANGE: was "micropython"
+if sys.implementation.name != "circuitpython":
+    # On CPython 3.13 and later the substitution count must be a keyword argument.
+    print(re.sub("a", "b", "1a2a3a", count=2))
+else:
+    print(re.sub("a", "b", "1a2a3a", 2))
 
 # invalid group
 try:
@@ -73,6 +80,6 @@ except TypeError:
 # Include \ in the sub replacement
 print(re.sub("b", "\\\\b", "abc"))
 
-# Using ^, make sre it doesn't repeatedly match
+# Using ^, make sure it doesn't repeatedly match
 print(re.sub("^ab", "*", "abababcabab"))
 print(re.sub("^ab|cab", "*", "abababcabab"))

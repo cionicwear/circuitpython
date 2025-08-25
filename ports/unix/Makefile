@@ -4,8 +4,9 @@ ifdef VARIANT_DIR
 # the path as the variant name.
 VARIANT ?= $(notdir $(VARIANT_DIR:/=))
 else
-# If not given on the command line, then default to standard.
-VARIANT ?= standard
+# CIRCUITPY-CHANGE: default variant is coverage
+# If not given on the command line, then default to coverage.
+VARIANT ?= coverage
 VARIANT_DIR ?= variants/$(VARIANT)
 endif
 
@@ -47,6 +48,10 @@ INC += -I$(BUILD)
 CWARN = -Wall -Werror
 CWARN += -Wextra -Wno-unused-parameter -Wpointer-arith -Wdouble-promotion -Wfloat-conversion
 CFLAGS += $(INC) $(CWARN) -std=gnu99 -DUNIX $(COPT) -I$(VARIANT_DIR) $(CFLAGS_EXTRA)
+
+# Force the use of 64-bits for file sizes in C library functions on 32-bit platforms.
+# This option has no effect on 64-bit builds.
+CFLAGS += -D_FILE_OFFSET_BITS=64
 
 # Debugging/Optimization
 ifdef DEBUG
@@ -168,7 +173,7 @@ ifeq ($(MICROPY_STANDALONE),1)
 # Build libffi from source.
 GIT_SUBMODULES += lib/libffi
 DEPLIBS += libffi
-LIBFFI_CFLAGS := -I$(shell ls -1d $(BUILD)/lib/libffi/out/lib/libffi-*/include)
+LIBFFI_CFLAGS := -I$(shell ls -1d $(BUILD)/lib/libffi/include)
  ifeq ($(MICROPY_FORCE_32BIT),1)
   LIBFFI_LDFLAGS = $(BUILD)/lib/libffi/out/lib32/libffi.a
  else
@@ -193,6 +198,7 @@ ifeq ($(MICROPY_PY_JNI),1)
 CFLAGS += -I/usr/lib/jvm/java-7-openjdk-amd64/include -DMICROPY_PY_JNI=1
 endif
 
+# CIRCUITPY-CHANGE: CircuitPython-specific files.
 # source files
 SRC_C += \
 	main.c \
@@ -230,11 +236,9 @@ OBJ += $(addprefix $(BUILD)/, $(SHARED_SRC_C:.c=.o))
 
 # List of sources for qstr extraction
 SRC_QSTR += $(SRC_C) $(SRC_CXX) $(SHARED_SRC_C)
-# Append any auto-generated sources that are needed by sources listed in
-# SRC_QSTR
-SRC_QSTR_AUTO_DEPS +=
 
 ifneq ($(FROZEN_MANIFEST),)
+# CIRCUITPY-CHANGE
 # To use frozen code create a manifest.py file with a description of files to
 # freeze, then invoke make with FROZEN_MANIFEST=manifest.py (be sure to build from scratch).
 CFLAGS += -DMICROPY_QSTR_EXTRA_POOL=mp_qstr_frozen_const_pool

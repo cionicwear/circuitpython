@@ -26,9 +26,9 @@
 #include "shared-module/displayio/__init__.h"
 #include "supervisor/shared/board.h"
 
-#include "src/rp2_common/hardware_gpio/include/hardware/gpio.h"
+#include "hardware/gpio.h"
 
-#include "src/rp2_common/hardware_adc/include/hardware/adc.h"
+#include "hardware/adc.h"
 #define ADC_FIRST_PIN_NUMBER 26
 #define ADC_PIN_COUNT 4
 extern void common_hal_mcu_delay_us(uint32_t);
@@ -192,7 +192,7 @@ bool board_reset_pin_number(uint8_t pin_number) {
             // glitch.
             gpio_put(pin_number, 1);
             gpio_set_dir(pin_number, GPIO_OUT);
-            hw_write_masked(&padsbank0_hw->io[pin_number], PADS_BANK0_GPIO0_DRIVE_VALUE_12MA << PADS_BANK0_GPIO0_DRIVE_LSB, PADS_BANK0_GPIO0_DRIVE_BITS);
+            hw_write_masked(&pads_bank0_hw->io[pin_number], PADS_BANK0_GPIO0_DRIVE_VALUE_12MA << PADS_BANK0_GPIO0_DRIVE_LSB, PADS_BANK0_GPIO0_DRIVE_BITS);
             gpio_set_function(pin_number, GPIO_FUNC_SIO);
         }
         return true;
@@ -273,6 +273,7 @@ void board_init(void) {
             SSD_WRITE_RAM_RED,                                                                              // write_color_ram_command
             false,                                                                                          // color_bits_inverted
             0xFF0000,                                                                                       // highlight_color (RED for tri-color display)
+            0x000000,                                                                                       // highlight_color2
             _refresh_sequence_ssd1681, sizeof(_refresh_sequence_ssd1681),                                   // refresh_display_command
             refresh_time,                                                                                   // refresh_time
             &pin_GPIO9, // DEFAULT_SPI_BUS_BUSY,                                                            // busy_pin
@@ -281,6 +282,7 @@ void board_init(void) {
             true,                                                                                           // always_toggle_chip_select
             false,                                                                                          // not grayscale
             false,                                                                                          // not acep
+            false,                                                                                          // not spectra6
             false,                                                                                          // not two_byte_sequence_length
             true);                                                                                          // address_little_endian
     } else if (vid_setting == 2) {  // Explorer SSD1608 BW
@@ -306,6 +308,7 @@ void board_init(void) {
             NO_COMMAND,                                                                                     // write_color_ram_command
             false,                                                                                          // color_bits_inverted
             0x000000,                                                                                       // highlight_color (RED for tri-color display)
+            0x000000,                                                                                       // highlight_color2
             _refresh_sequence_ssd1608, sizeof(_refresh_sequence_ssd1608),                                   // refresh_display_command
             refresh_time,                                                                                   // refresh_time
             &pin_GPIO9, // DEFAULT_SPI_BUS_BUSY,                                                            // busy_pin
@@ -314,6 +317,7 @@ void board_init(void) {
             true,                                                                                           // always_toggle_chip_select
             false,                                                                                          // not grayscale
             false,                                                                                          // not acep
+            false,                                                                                          // not spectra6
             false,                                                                                          // not two_byte_sequence_length
             true);                                                                                          // address_little_endian
     } else {

@@ -309,7 +309,7 @@ void port_i2s_initialize(i2s_t *self, int instance, sai_transceiver_t *config) {
         mp_raise_ValueError_varg(MP_ERROR_TEXT("Invalid %q"), MP_QSTR_I2SOut);
     }
     for (size_t i = 0; i < MP_ARRAY_SIZE(self->buffers); i++) {
-        self->buffers[i] = m_malloc(AUDIO_BUFFER_FRAME_COUNT * sizeof(uint32_t));
+        self->buffers[i] = m_malloc_without_collect(AUDIO_BUFFER_FRAME_COUNT * sizeof(uint32_t));
     }
     self->peripheral = peripheral;
     SAI_Init(self->peripheral);
@@ -374,11 +374,11 @@ static void set_sai_clocking_for_sample_rate(uint32_t sample_rate) {
 void port_i2s_play(i2s_t *self, mp_obj_t sample, bool loop) {
     self->sample = sample;
     self->loop = loop;
-    self->bytes_per_sample = audiosample_bits_per_sample(sample) / 8;
-    self->channel_count = audiosample_channel_count(sample);
+    self->bytes_per_sample = audiosample_get_bits_per_sample(sample) / 8;
+    self->channel_count = audiosample_get_channel_count(sample);
     int instance = SAI_GetInstance(self->peripheral);
     i2s_playing |= (1 << instance);
-    uint32_t sample_rate = audiosample_sample_rate(sample);
+    uint32_t sample_rate = audiosample_get_sample_rate(sample);
     if (sample_rate != self->sample_rate) {
         if (__builtin_popcount(i2s_playing) <= 1) {
             // as this is the first/only i2s instance playing audio, we can
@@ -439,6 +439,6 @@ void port_i2s_resume(i2s_t *self) {
     self->paused = false;
 }
 
-void i2s_reset() {
+void i2s_reset(void) {
 // this port relies on object finalizers for reset
 }

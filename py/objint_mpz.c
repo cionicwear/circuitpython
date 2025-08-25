@@ -43,26 +43,26 @@
 // Export value for sys.maxsize
 // *FORMAT-OFF*
 #define DIG_MASK ((MPZ_LONG_1 << MPZ_DIG_SIZE) - 1)
-STATIC const mpz_dig_t maxsize_dig[] = {
+static const mpz_dig_t maxsize_dig[] = {
     #define NUM_DIG 1
     (MP_SSIZE_MAX >> MPZ_DIG_SIZE * 0) & DIG_MASK,
     #if (MP_SSIZE_MAX >> MPZ_DIG_SIZE * 0) > DIG_MASK
-#undef NUM_DIG
+     #undef NUM_DIG
      #define NUM_DIG 2
-    (MP_SSIZE_MAX >> MPZ_DIG_SIZE * 1) & DIG_MASK,
-    #if (MP_SSIZE_MAX >> MPZ_DIG_SIZE * 1) > DIG_MASK
-#undef NUM_DIG
+     (MP_SSIZE_MAX >> MPZ_DIG_SIZE * 1) & DIG_MASK,
+     #if (MP_SSIZE_MAX >> MPZ_DIG_SIZE * 1) > DIG_MASK
+      #undef NUM_DIG
       #define NUM_DIG 3
-    (MP_SSIZE_MAX >> MPZ_DIG_SIZE * 2) & DIG_MASK,
-    #if (MP_SSIZE_MAX >> MPZ_DIG_SIZE * 2) > DIG_MASK
-#undef NUM_DIG
+      (MP_SSIZE_MAX >> MPZ_DIG_SIZE * 2) & DIG_MASK,
+      #if (MP_SSIZE_MAX >> MPZ_DIG_SIZE * 2) > DIG_MASK
+       #undef NUM_DIG
        #define NUM_DIG 4
-    (MP_SSIZE_MAX >> MPZ_DIG_SIZE * 3) & DIG_MASK,
-    #if (MP_SSIZE_MAX >> MPZ_DIG_SIZE * 3) > DIG_MASK
-    #error cannot encode MP_SSIZE_MAX as mpz
-    #endif
-    #endif
-    #endif
+       (MP_SSIZE_MAX >> MPZ_DIG_SIZE * 3) & DIG_MASK,
+       #if (MP_SSIZE_MAX >> MPZ_DIG_SIZE * 3) > DIG_MASK
+        #error cannot encode MP_SSIZE_MAX as mpz
+       #endif
+      #endif
+     #endif
     #endif
 };
 // *FORMAT-ON*
@@ -119,10 +119,10 @@ mp_obj_t mp_obj_int_from_bytes_impl(bool big_endian, size_t len, const byte *buf
     return MP_OBJ_FROM_PTR(o);
 }
 
-void mp_obj_int_to_bytes_impl(mp_obj_t self_in, bool big_endian, size_t len, byte *buf) {
+bool mp_obj_int_to_bytes_impl(mp_obj_t self_in, bool big_endian, size_t len, byte *buf) {
     assert(mp_obj_is_exact_type(self_in, &mp_type_int));
     mp_obj_int_t *self = MP_OBJ_TO_PTR(self_in);
-    mpz_as_bytes(&self->mpz, big_endian, len, buf);
+    return mpz_as_bytes(&self->mpz, big_endian, self->mpz.neg, len, buf);
 }
 
 int mp_obj_int_sign(mp_obj_t self_in) {
@@ -244,6 +244,7 @@ mp_obj_t mp_obj_int_binary_op(mp_binary_op_t op, mp_obj_t lhs_in, mp_obj_t rhs_i
             case MP_BINARY_OP_INPLACE_FLOOR_DIVIDE: {
                 if (mpz_is_zero(zrhs)) {
                 zero_division_error:
+                    // CIRCUITPY-CHANGE: remove redundant message
                     mp_raise_ZeroDivisionError();
                 }
                 mpz_t rem;
@@ -319,6 +320,14 @@ mp_obj_t mp_obj_int_binary_op(mp_binary_op_t op, mp_obj_t lhs_in, mp_obj_t rhs_i
                 return MP_OBJ_NULL; // op not supported
         }
 
+        // Check if the result fits in a small-int, and if so just return that.
+        mp_int_t res_small;
+        if (mpz_as_int_checked(&res->mpz, &res_small)) {
+            if (MP_SMALL_INT_FITS(res_small)) {
+                return MP_OBJ_NEW_SMALL_INT(res_small);
+            }
+        }
+
         return MP_OBJ_FROM_PTR(res);
 
     } else {
@@ -342,7 +351,7 @@ mp_obj_t mp_obj_int_binary_op(mp_binary_op_t op, mp_obj_t lhs_in, mp_obj_t rhs_i
 }
 
 #if MICROPY_PY_BUILTINS_POW3
-STATIC mpz_t *mp_mpz_for_int(mp_obj_t arg, mpz_t *temp) {
+static mpz_t *mp_mpz_for_int(mp_obj_t arg, mpz_t *temp) {
     if (mp_obj_is_small_int(arg)) {
         mpz_init_from_int(temp, MP_OBJ_SMALL_INT_VALUE(arg));
         return temp;
@@ -364,6 +373,7 @@ mp_obj_t mp_obj_int_pow3(mp_obj_t base, mp_obj_t exponent,  mp_obj_t modulus) {
         mpz_t *rhs = mp_mpz_for_int(exponent, &r_temp);
         mpz_t *mod = mp_mpz_for_int(modulus,  &m_temp);
 
+        // CIRCUITPY-CHANGE: extra checking
         if (mpz_is_zero(mod)) {
             mp_raise_msg(&mp_type_ValueError, MP_ERROR_TEXT("pow() 3rd argument cannot be 0"));
         }
@@ -436,6 +446,10 @@ mp_int_t mp_obj_int_get_checked(mp_const_obj_t self_in) {
         const mp_obj_int_t *self = MP_OBJ_TO_PTR(self_in);
         mp_int_t value;
         if (mpz_as_int_checked(&self->mpz, &value)) {
+            // mp_obj_int_t objects should always contain a value that is a large
+            // integer (if the value fits in a small-int then it should have been
+            // converted to a small-int object), and so this code-path should never
+            // be taken in normal circumstances.
             return value;
         } else {
             // overflow
