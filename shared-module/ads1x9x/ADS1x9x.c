@@ -48,25 +48,25 @@ float g_ads_buffer[ADS1X9X_NUM_CHAN] = {0};
 // ads121x datasheet p.25 - Data Format
 static float ads_gain_norms[2][7] = {
     {12.207403790398877f, // gain 6
-    73.244422742393262f, // 1
-    36.622211371196631f, // 2
-    24.414807580797754f, // 3
-    18.311105685598316f, // 4
-    9.155552842799158f, // 8
-    6.103701895199439f},  // 12
+     73.244422742393262f, // 1
+     36.622211371196631f, // 2
+     24.414807580797754f, // 3
+     18.311105685598316f, // 4
+     9.155552842799158f, // 8
+     6.103701895199439f}, // 12
 
     {0.047683721504655066f, // gain 6
-    0.286102329027930368f, // 1
-    0.143051164513965184f, // 2
-    0.095367443009310132f, // 3
-    0.071525582256982592f, // 4
-    0.035762791128491296f, // 8
-    0.023841860752327533f}  // 12
+     0.286102329027930368f, // 1
+     0.143051164513965184f, // 2
+     0.095367443009310132f, // 3
+     0.071525582256982592f, // 4
+     0.035762791128491296f, // 8
+     0.023841860752327533f} // 12
 };
 
 static float ads_loff_currents[2][4] = {
-    {4000,8000,12000,16000}, // ads119x datasheet [Lead-Off Control Register]
-    {6000,12000,18000,24000} // ads129x datasheet 9.6.1.5
+    {4000, 8000, 12000, 16000}, // ads119x datasheet [Lead-Off Control Register]
+    {6000, 12000, 18000, 24000} // ads129x datasheet 9.6.1.5
 }; // picoA
 
 // static bool buffer_ready = false;
@@ -82,8 +82,7 @@ static void unlock_bus(ads1x9x_ADS1x9x_obj_t *self) {
     common_hal_busio_spi_unlock(self->bus);
 }
 
-static void ads129x_config_update(ads1x9x_ADS1x9x_obj_t *self, uint8_t reg, const uint8_t val)
-{
+static void ads129x_config_update(ads1x9x_ADS1x9x_obj_t *self, uint8_t reg, const uint8_t val) {
     // for (uint8_t reg = startreg; reg < startreg + nregs; reg++, index++) {
     if (reg >= ADS_CH1SET_REG && reg < ADS_CH1SET_REG + ADS1X9X_NUM_CHAN) {
         int ch = reg - ADS_CH1SET_REG;
@@ -97,20 +96,18 @@ static void ads129x_config_update(ads1x9x_ADS1x9x_obj_t *self, uint8_t reg, cons
     }
 }
 
-static void ads129x_raw(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out)
-{
+static void ads129x_raw(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out) {
     uint8_t i = 0;
     int16_t ads_sample;
 
-    for(i = 0 ; i < ADS1X9X_NUM_CHAN ; i++){
+    for (i = 0; i < ADS1X9X_NUM_CHAN; i++) {
         ads_sample = READ_BE(int16_t, in);
         out[i] = (float)ads_sample * self->all_norms[i];
         in += 2;
     }
 }
 
-static void ads129x_diff_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out, uint16_t len)
-{
+static void ads129x_diff_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out, uint16_t len) {
     int numchans = len / 2; // data in is 16-bit
     uint32_t ts_out;
 
@@ -120,8 +117,7 @@ static void ads129x_diff_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, floa
 
 }
 
-static void ads129x_iir_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out, uint16_t len)
-{
+static void ads129x_iir_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out, uint16_t len) {
     int numchans = len / 2; // data in is 16-bit
     uint32_t ts_out;
 
@@ -135,7 +131,7 @@ static void data_ready_cb(void *arg) {
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)arg;
     self->lock = true;
 
-    if(self->started == false){
+    if (self->started == false) {
         return;
     }
 
@@ -143,18 +139,17 @@ static void data_ready_cb(void *arg) {
     self->lock = false;
 }
 
-static void ads1x9x_set_norms(ads1x9x_ADS1x9x_obj_t *self)
-{
-    if(self->id == ADS129X_DEV_ID){
+static void ads1x9x_set_norms(ads1x9x_ADS1x9x_obj_t *self) {
+    if (self->id == ADS129X_DEV_ID) {
         self->norms = ads_gain_norms[0];
         self->loff = ads_loff_currents[0];
-    }else{ // ADS1X9X_DEV_ID
+    } else { // ADS1X9X_DEV_ID
         self->norms = ads_gain_norms[1];
         self->loff = ads_loff_currents[1];
     }
 }
 
-void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi_obj_t *bus, const mcu_pin_obj_t *cs, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *drdy, const mcu_pin_obj_t *start, const mcu_pin_obj_t *pwdn) {    
+void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi_obj_t *bus, const mcu_pin_obj_t *cs, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *drdy, const mcu_pin_obj_t *start, const mcu_pin_obj_t *pwdn) {
     self->bus = bus;
     self->started = false;
     self->num_chan = ADS1X9X_NUM_CHAN;
@@ -179,12 +174,12 @@ void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi
     common_hal_ads1x9x_ADS1x9x_reset(self);
 
     self->id = common_hal_ads1x9x_ADS1x9x_read_reg(self, ADS_INFO_REG);
-    
-    if(self->id == ADS129X_DEV_ID){
+
+    if (self->id == ADS129X_DEV_ID) {
         self->sample_bytes = ADS129X_SIZE_DATA_CHAN;
-    }else if(self->id == ADS1198_DEV_ID){
+    } else if (self->id == ADS1198_DEV_ID) {
         self->sample_bytes = ADS1198_SIZE_DATA_CHAN;
-    }else{
+    } else {
         mp_raise_OSError(ENODEV);
         return;
     }
@@ -219,7 +214,7 @@ void common_hal_ads1x9x_ADS1x9x_deinit(ads1x9x_ADS1x9x_obj_t *self) {
     if (!self->bus) {
         return;
     }
-    
+
     self->bus = 0;
 
     common_hal_digitalio_digitalinout_deinit(&self->cs);
@@ -232,7 +227,7 @@ void common_hal_ads1x9x_ADS1x9x_deinit(ads1x9x_ADS1x9x_obj_t *self) {
 
 void common_hal_ads1x9x_ADS1x9x_start(ads1x9x_ADS1x9x_obj_t *self) {
     uint8_t wval = CMD_RDATAC;
-    if(self->started){
+    if (self->started) {
         mp_raise_OSError(EAGAIN);
         return;
     }
@@ -253,7 +248,7 @@ void common_hal_ads1x9x_ADS1x9x_stop(ads1x9x_ADS1x9x_obj_t *self) {
 uint8_t common_hal_ads1x9x_ADS1x9x_read_reg(ads1x9x_ADS1x9x_obj_t *self, uint8_t addr) {
     uint8_t value = 0;
     uint8_t wval = 0;
-    
+
     lock_bus(self);
     common_hal_digitalio_digitalinout_set_value(&self->cs, false);
     wval = CMD_SDATAC;
@@ -298,22 +293,22 @@ void common_hal_ads1x9x_ADS1x9x_read_data(ads1x9x_ADS1x9x_obj_t *self, uint8_t *
     common_hal_digitalio_digitalinout_set_value(&self->cs, true);
     memcpy(rx_buf, &rx_buf[ADS1X9X_SIZE_STATUS_REG + 1], len - ADS1X9X_SIZE_STATUS_REG);
 
-    if(self->filter == ADS1x9x_RAW){
+    if (self->filter == ADS1x9x_RAW) {
         ads129x_raw(self, rx_buf, (float *)data);
-    }else if(self->filter == ADS1x9x_DIFF_FILTER){
+    } else if (self->filter == ADS1x9x_DIFF_FILTER) {
         ads129x_diff_filtered(self, rx_buf, (float *)data, len - ADS1X9X_SIZE_STATUS_REG);
-    }else if(self->filter == ADS1x9x_IIR_FILTER){
+    } else if (self->filter == ADS1x9x_IIR_FILTER) {
         ads129x_iir_filtered(self, rx_buf, (float *)data, len - ADS1X9X_SIZE_STATUS_REG);
     }
-    
-    
+
+
     unlock_bus(self);
 }
 
 size_t common_hal_ads1x9x_ADS1x9x_read(ads1x9x_ADS1x9x_obj_t *self, mp_buffer_info_t *buf, uint16_t buf_size) {
     uint8_t *ptr = buf->buf;
 
-    while(self->lock){
+    while (self->lock) {
         mp_handle_pending(true);
         // Allow user to break out of a timeout with a KeyboardInterrupt.
         if (mp_hal_is_interrupted()) {
