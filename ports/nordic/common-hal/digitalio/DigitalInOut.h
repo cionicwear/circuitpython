@@ -16,9 +16,3 @@ typedef struct {
     io_irq_t *cb;
     void *cb_arg;
 } digitalio_digitalinout_obj_t;
-
-typedef enum {
-    EDGE_RISE,
-    EDGE_FALL,
-    EDGE_RISE_AND_FALL,
-} digitalio_edge_t;
