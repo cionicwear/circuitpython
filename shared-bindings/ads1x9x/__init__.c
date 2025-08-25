@@ -34,12 +34,12 @@
 
 //| """Interface to an ADS1x9x via the SPI bus"""
 
-STATIC const mp_rom_map_elem_t ads1x9x_module_globals_table[] = {
+static const mp_rom_map_elem_t ads1x9x_module_globals_table[] = {
     { MP_ROM_QSTR(MP_QSTR___name__), MP_ROM_QSTR(MP_QSTR_ads1x9x) },
     { MP_ROM_QSTR(MP_QSTR_ADS1x9x), MP_ROM_PTR(&ads1x9x_ADS1x9x_type) },
 };
 
-STATIC MP_DEFINE_CONST_DICT(ads1x9x_module_globals, ads1x9x_module_globals_table);
+static MP_DEFINE_CONST_DICT(ads1x9x_module_globals, ads1x9x_module_globals_table);
 
 const mp_obj_module_t ads1x9x_module = {
     .base = { &mp_type_module },

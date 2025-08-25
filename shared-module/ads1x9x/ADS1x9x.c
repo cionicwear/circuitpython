@@ -46,7 +46,7 @@ float g_ads_buffer[ADS1X9X_NUM_CHAN] = {0};
 
 // ads129x datasheet 9.4.1.3.3
 // ads121x datasheet p.25 - Data Format
-STATIC float ads_gain_norms[2][7] = {
+static float ads_gain_norms[2][7] = {
     {12.207403790398877f, // gain 6
     73.244422742393262f, // 1
     36.622211371196631f, // 2
@@ -64,25 +64,25 @@ STATIC float ads_gain_norms[2][7] = {
     0.023841860752327533f}  // 12
 };
 
-STATIC float ads_loff_currents[2][4] = {
+static float ads_loff_currents[2][4] = {
     {4000,8000,12000,16000}, // ads119x datasheet [Lead-Off Control Register]
     {6000,12000,18000,24000} // ads129x datasheet 9.6.1.5
 }; // picoA
 
-// STATIC bool buffer_ready = false;
+// static bool buffer_ready = false;
 
-STATIC void lock_bus(ads1x9x_ADS1x9x_obj_t *self) {
+static void lock_bus(ads1x9x_ADS1x9x_obj_t *self) {
     if (!common_hal_busio_spi_try_lock(self->bus)) {
         mp_raise_OSError(EAGAIN);
         return;
     }
 }
 
-STATIC void unlock_bus(ads1x9x_ADS1x9x_obj_t *self) {
+static void unlock_bus(ads1x9x_ADS1x9x_obj_t *self) {
     common_hal_busio_spi_unlock(self->bus);
 }
 
-STATIC void ads129x_config_update(ads1x9x_ADS1x9x_obj_t *self, uint8_t reg, const uint8_t val)
+static void ads129x_config_update(ads1x9x_ADS1x9x_obj_t *self, uint8_t reg, const uint8_t val)
 {
     // for (uint8_t reg = startreg; reg < startreg + nregs; reg++, index++) {
     if (reg >= ADS_CH1SET_REG && reg < ADS_CH1SET_REG + ADS1X9X_NUM_CHAN) {
@@ -97,7 +97,7 @@ STATIC void ads129x_config_update(ads1x9x_ADS1x9x_obj_t *self, uint8_t reg, cons
     }
 }
 
-STATIC void ads129x_raw(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out)
+static void ads129x_raw(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out)
 {
     uint8_t i = 0;
     int16_t ads_sample;
@@ -109,7 +109,7 @@ STATIC void ads129x_raw(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out)
     }
 }
 
-STATIC void ads129x_diff_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out, uint16_t len)
+static void ads129x_diff_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out, uint16_t len)
 {
     int numchans = len / 2; // data in is 16-bit
     uint32_t ts_out;
@@ -120,7 +120,7 @@ STATIC void ads129x_diff_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, floa
 
 }
 
-STATIC void ads129x_iir_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out, uint16_t len)
+static void ads129x_iir_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float *out, uint16_t len)
 {
     int numchans = len / 2; // data in is 16-bit
     uint32_t ts_out;
@@ -131,7 +131,7 @@ STATIC void ads129x_iir_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float
 
 }
 
-STATIC void data_ready_cb(void *arg) {
+static void data_ready_cb(void *arg) {
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)arg;
     self->lock = true;
 
@@ -143,7 +143,7 @@ STATIC void data_ready_cb(void *arg) {
     self->lock = false;
 }
 
-STATIC void ads1x9x_set_norms(ads1x9x_ADS1x9x_obj_t *self)
+static void ads1x9x_set_norms(ads1x9x_ADS1x9x_obj_t *self)
 {
     if(self->id == ADS129X_DEV_ID){
         self->norms = ads_gain_norms[0];
