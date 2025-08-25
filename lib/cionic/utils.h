@@ -63,7 +63,7 @@ typedef struct PACKED uint24_t {
 
 
 // These depend on the actual endianness of the system.
-// BIG_ENDIAN == 0 == !LITTLE_ENDIAN since our systems are all little-endian, 
+// BIG_ENDIAN == 0 == !LITTLE_ENDIAN since our systems are all little-endian,
 #define CIONIC_BIG_ENDIAN 0
 #define CIONIC_LITTLE_ENDIAN 1
 

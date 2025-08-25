@@ -64,7 +64,7 @@ diff_filter_process(diff_filter_t *diff, float *norms, int numchans,
         diff->rms_buffer[i][diff->rms_samples] = output;
         // output channel rms
         uv_out[i] = diff->rms[i];
-    }    
+    }
 
     // 2. if rms_buffer filled compute sos for window and update rms
     if (++diff->rms_samples >= RMS_NUM_SAMPLES) {
@@ -102,4 +102,3 @@ diff_filter_init(diff_filter_t *filter)
 {
     bzero(filter, sizeof(diff_filter_t));
 }
-

@@ -43,7 +43,7 @@
 //|     Interacts with an ADS1x9x over SPI."""
 //|
 //|     def __init__(
-//|         self, bus: busio.SPI, cs: microcontroller.Pin, rst: microcontroller.Pin, 
+//|         self, bus: busio.SPI, cs: microcontroller.Pin, rst: microcontroller.Pin,
 //|         drdy: microcontroller.Pin, start: microcontroller.Pin, pwdn: microcontroller.Pin
 //|     ) -> None:
 //|         """Construct an SPI ADS1x9x object with the given properties
