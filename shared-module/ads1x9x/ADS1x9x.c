@@ -33,10 +33,12 @@
 #include "shared-bindings/time/__init__.h"
 #include "shared-bindings/util.h"
 #include "shared-bindings/digitalio/DigitalInOut.h"
+#include "supervisor/background_callback.h"
 
 #include "py/mperrno.h"
 #include <string.h>
 #include "py/stream.h"
+#include "ringbuf.h"
 
 #define ADS1x9x_BAUDRATE    (8000000)
 #define ADS1x9x_RINGBUF_SIZE (100)
@@ -134,27 +136,65 @@ STATIC void ads129x_iir_filtered(ads1x9x_ADS1x9x_obj_t *self, uint8_t *in, float
 
 }
 
-STATIC void data_ready_cb(void *arg) {
-    static bool g_full = false;
-    ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)arg;
-    self->lock = true;
+// Helper: clock out exactly one RDATAC frame (no filtering here)
+STATIC inline void ads1x9x_read_frame(ads1x9x_ADS1x9x_obj_t *self, uint8_t *dst) {
+    static uint8_t zeros[MAX_BUF_LEN];  // BSS -> already zeroed
+    common_hal_digitalio_digitalinout_set_value(&self->cs, false);
+    common_hal_busio_spi_transfer(self->bus, zeros, dst, self->frame_len);
+    common_hal_digitalio_digitalinout_set_value(&self->cs, true);
+}
 
-    if (self->started == false) {
-        return;
+// Convert one raw frame to floats per current filter setting
+STATIC void ads1x9x_convert_frame(ads1x9x_ADS1x9x_obj_t *self,
+                                  const uint8_t *raw_frame, float *out) {
+    const uint8_t *payload = raw_frame + ADS1X9X_SIZE_STATUS_REG;
+    uint16_t payload_len   = self->frame_len - ADS1X9X_SIZE_STATUS_REG;
+
+    if (self->filter == ADS1x9x_RAW) {
+        ads129x_raw(self, (uint8_t *)payload, out);
+    } else if (self->filter == ADS1x9x_DIFF_FILTER) {
+        ads129x_diff_filtered(self, (uint8_t *)payload, out, payload_len);
+    } else { // ADS1x9x_IIR_FILTER
+        ads129x_iir_filtered(self, (uint8_t *)payload, out, payload_len);
     }
+}
 
-    g_ads_sample.ts = common_hal_time_monotonic_ns() / 100000;
-    common_hal_ads1x9x_ADS1x9x_read_data(self, (uint8_t *)g_ads_sample.data, (self->num_chan * self->sample_bytes) + ADS1X9X_SIZE_STATUS_REG);
+#ifndef ADS_BG_MAX_BURST
+#define ADS_BG_MAX_BURST  8
+#endif
 
-    if (cionic_ringbuf_write_sample(self->rb, &g_ads_sample, sizeof(ads_sample_t)) == false) {
-        if (g_full == false) {
-            g_full = true;
-            mp_printf(&mp_plat_print, "ringbuf full!\n");
+STATIC void ads1x9x_bg_worker(void *data) {
+    ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)data;
+    static uint8_t rx_buf[MAX_BUF_LEN];    // avoid stack churn
+
+    uint16_t serviced = 0;
+    while (self->drdy_pending && serviced < ADS_BG_MAX_BURST) {
+        ads_sample_t sample;
+        sample.ts = (uint32_t)(common_hal_time_monotonic_ns() / 100000); // 10 µs ticks
+        ads1x9x_read_frame(self, rx_buf);
+        ads1x9x_convert_frame(self, rx_buf, sample.data);
+        if (!cionic_ringbuf_write_sample(self->rb, &sample, sizeof(ads_sample_t))) {
+            self->drops += self->drdy_pending;
+            self->drdy_pending = 0;
+            break;
         }
-    } else {
-        g_full = false;
+        self->drdy_pending--;
+        serviced++;
     }
-    self->lock = false;
+
+    // If more DRDY events piled up, requeue ourselves for another slice.
+    if (self->drdy_pending) {
+        background_callback_add(&self->bg_cb, ads1x9x_bg_worker, self);
+    }
+}
+
+STATIC void data_ready_cb(void *arg) {
+    ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)arg;
+    if (!self->started) return;
+    self->drdy_pending++;
+    if (!background_callback_pending()) {
+        background_callback_add(&self->bg_cb, ads1x9x_bg_worker, self);
+    }
 }
 
 STATIC void ads1x9x_set_norms(ads1x9x_ADS1x9x_obj_t *self) {
@@ -173,7 +213,6 @@ void common_hal_ads1x9x_ADS1x9x_construct(ads1x9x_ADS1x9x_obj_t *self, busio_spi
     self->num_chan = ADS1X9X_NUM_CHAN;
     self->sample_bytes = 0;
     self->filter = ADS1x9x_IIR_FILTER;
-    self->lock = false;
 
     common_hal_digitalio_digitalinout_construct(&self->cs, cs);
     common_hal_digitalio_digitalinout_switch_to_output(&self->cs, true, DRIVE_MODE_PUSH_PULL);
@@ -256,22 +295,25 @@ void common_hal_ads1x9x_ADS1x9x_deinit(ads1x9x_ADS1x9x_obj_t *self) {
 
 void common_hal_ads1x9x_ADS1x9x_start(ads1x9x_ADS1x9x_obj_t *self) {
     uint8_t wval = CMD_RDATAC;
+    self->drdy_pending = 0;
+    self->drops = 0;
+    self->frame_len = ADS1X9X_SIZE_STATUS_REG + self->num_chan * self->sample_bytes;
     if (self->started) {
         mp_raise_OSError(EAGAIN);
         return;
     }
     self->started = true;
 
-    lock_bus(self);
+    lock_bus(self);  // take ownership for the acquisition run
     common_hal_digitalio_digitalinout_set_value(&self->cs, false);
     common_hal_busio_spi_write(self->bus, &wval, 1);
     common_hal_digitalio_digitalinout_set_value(&self->cs, true);
-    unlock_bus(self);
     common_hal_digitalio_digitalinout_set_value(&self->start, true);
 }
 
 void common_hal_ads1x9x_ADS1x9x_stop(ads1x9x_ADS1x9x_obj_t *self) {
     common_hal_digitalio_digitalinout_set_value(&self->start, false);
+    unlock_bus(self);  // release after streaming
 }
 
 uint8_t common_hal_ads1x9x_ADS1x9x_read_reg(ads1x9x_ADS1x9x_obj_t *self, uint8_t addr) {
@@ -335,14 +377,5 @@ void common_hal_ads1x9x_ADS1x9x_read_data(ads1x9x_ADS1x9x_obj_t *self, uint8_t *
 
 size_t common_hal_ads1x9x_ADS1x9x_read(ads1x9x_ADS1x9x_obj_t *self, mp_buffer_info_t *buf, uint16_t buf_size) {
     uint8_t *ptr = buf->buf;
-
-    while (self->lock) {
-        mp_handle_pending(true);
-        // Allow user to break out of a timeout with a KeyboardInterrupt.
-        if (mp_hal_is_interrupted()) {
-            return 0;
-        }
-    }
-
     return cionic_ringbuf_read_samples(self->rb, ptr, buf_size);
 }
