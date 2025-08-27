@@ -30,7 +30,6 @@
 #include "py/obj.h"
 
 #include "lib/cionic/utils.h"
-#include "lib/cionic/ringbuf.h"
 
 #include "common-hal/busio/I2C.h"
 #include "common-hal/digitalio/DigitalInOut.h"
@@ -118,11 +117,6 @@ typedef struct {
     int8_t addr;
     bool sampling;
     int8_t last_report;
-    ringbuf_t *quat_buf;
-    ringbuf_t *accel_buf;
-    ringbuf_t *gyro_buf;
-    ringbuf_t *time_buf;
-    ringbuf_t cmd_buf;
     bno080i2c_frs_t frs_saved[BNO080_FRS_SLOTS];
     uint8_t read_seqnums[BNO080_NUM_CHANNELS];
     uint8_t write_seqnums[BNO080_NUM_CHANNELS];

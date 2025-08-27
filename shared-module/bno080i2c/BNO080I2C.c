@@ -28,7 +28,6 @@
 #include "shared-bindings/busio/I2C.h"
 #include "shared-module/bno080i2c/BNO080I2C.h"
 #include "lib/cionic/orientation.h"
-#include "lib/cionic/ringbuf.h"
 
 #include "shared-bindings/microcontroller/__init__.h"
 #include "shared-bindings/time/__init__.h"
@@ -758,11 +757,6 @@ void common_hal_bno080i2c_BNO080I2C_construct(bno080i2c_BNO080I2C_obj_t *self, b
     self->addr = addr;
     self->debug = debug;
     self->calibration_complete = false;
-
-    // self->quat_buf = NULL;
-    // self->accel_buf = NULL;
-    // self->gyro_buf = NULL;
-    // self->time_buf = cionic_ringbuf_alloc(sizeof(elapsed_t), BNO080_DATABUF_SIZE);
 
     if (self->debug) {
         mp_printf(&mp_plat_print, "Soft resetting...\n");
