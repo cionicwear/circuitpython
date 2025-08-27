@@ -39,7 +39,7 @@
 #include "py/stream.h"
 
 #define ADS1x9x_BAUDRATE    (8000000)
-#define ADS1x9x_RINGBUF_SIZE (400)
+#define ADS1x9x_RINGBUF_SIZE (100)
 // TS (4 Bytes) + (nb_chan * sizeof(float)) +  ADS1X9X_SIZE_STATUS_REG + spi_cmd (1 Byte)
 #define TS_LEN              (sizeof(uint32_t))
 #define MAX_BUF_LEN         ((ADS1X9X_NUM_CHAN * sizeof(float)) + ADS1X9X_SIZE_STATUS_REG + 1 + TS_LEN)

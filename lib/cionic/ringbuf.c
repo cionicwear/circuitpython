@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdatomic.h>
 #include "ringbuf.h"
-
 
 ringbuf_t *cionic_ringbuf_alloc(uint16_t sample_size, uint16_t nsamples)
 {
@@ -22,22 +22,62 @@ ringbuf_t *cionic_ringbuf_alloc(uint16_t sample_size, uint16_t nsamples)
     rb->cbuflen = buflen;
     rb->sample_size = sample_size;
     rb->write_idx = rb->read_idx = 0;
+    // atomic_flag_clear(&rb->lock);
 
     return rb;
 }
 
+void cionic_ringbuf_lock(ringbuf_t *rb) {
+    // while (atomic_flag_test_and_set(&rb->lock)) {
+    //     // spinning... no OS or threading support for full mutex in circuitpython
+    // }
+}
+
+void cionic_ringbuf_unlock(ringbuf_t *rb) {
+    // atomic_flag_clear(&rb->lock);
+}
+
 void cionic_ringbuf_clear(ringbuf_t *rb)
 {
+    cionic_ringbuf_lock(rb);
     rb->write_idx = rb->read_idx = 0;
+    cionic_ringbuf_unlock(rb);
 }
 
 int cionic_ringbuf_len(ringbuf_t *rb)
 {
-    return (rb->write_idx + rb->cbuflen - rb->read_idx) % rb->cbuflen;
+    int len;
+    cionic_ringbuf_lock(rb);
+    len = (rb->write_idx + rb->cbuflen - rb->read_idx) % rb->cbuflen;
+    cionic_ringbuf_unlock(rb);
+    return len;
 }
 
+// locked read
 // fill buf with as many whole samples as will fit; return number of bytes written into buf
 int cionic_ringbuf_read_samples(ringbuf_t *rb, void *_buf, int buflen)
+{
+    int ret;
+    cionic_ringbuf_lock(rb);
+    ret = cionic_ringbuf_read_samples_nolock(rb, _buf, buflen);
+    cionic_ringbuf_unlock(rb);
+    return ret;
+}
+
+// locked write
+// write all buflen bytes from buf into ringbuf, or return false
+bool cionic_ringbuf_write_sample(ringbuf_t *rb, const void *_buf, int buflen)
+{
+    bool ret;
+    cionic_ringbuf_lock(rb);
+    ret = cionic_ringbuf_write_sample_nolock(rb, _buf, buflen);
+    cionic_ringbuf_unlock(rb);
+    return ret;
+}
+
+// nolock read
+// fill buf with as many whole samples as will fit; return number of bytes written into buf
+int cionic_ringbuf_read_samples_nolock(ringbuf_t *rb, void *_buf, int buflen)
 {
     uint8_t *buf = _buf;
     const int nsamples = buflen / rb->sample_size;
@@ -72,7 +112,9 @@ int cionic_ringbuf_read_samples(ringbuf_t *rb, void *_buf, int buflen)
     return backlen + frontlen;
 }
 
-bool cionic_ringbuf_write_sample(ringbuf_t *rb, const void *_buf, int buflen)
+// nolock write
+// write all buflen bytes from buf into ringbuf, or return false
+bool cionic_ringbuf_write_sample_nolock(ringbuf_t *rb, const void *_buf, int buflen)
 {
     const uint8_t *buf = _buf;
 
