@@ -40,8 +40,7 @@
 //| class ADS1x9x:
 //|     """ADS1x9x Interface
 //|
-//|     Interacts with an ADS1x9x over SPI.
-//|     """
+//|     Interacts with an ADS1x9x over SPI."""
 //|
 //|     def __init__(
 //|         self,
@@ -52,8 +51,7 @@
 //|         start: microcontroller.Pin,
 //|         pwdn: microcontroller.Pin,
 //|     ) -> None:
-//|         """
-//|         Construct an SPI ADS1x9x object with the given properties.
+//|         """Construct an SPI ADS1x9x object with the given properties
 //|
 //|         :param busio.SPI spi: The SPI bus
 //|         :param microcontroller.Pin cs: The SPI chip select
@@ -104,7 +102,7 @@ STATIC mp_obj_t ads1x9x_ads1x9x_make_new(const mp_obj_type_t *type, size_t n_arg
 }
 
 //|     def reset(self) -> None:
-//|         """Reset the ADS1x9x.
+//|         """Reset the ADS1x9x
 //|
 //|         :return: None"""
 STATIC mp_obj_t ads1x9x_ads1x9x_reset(mp_obj_t self_in) {
@@ -115,7 +113,7 @@ STATIC mp_obj_t ads1x9x_ads1x9x_reset(mp_obj_t self_in) {
 MP_DEFINE_CONST_FUN_OBJ_1(ads1x9x_ads1x9x_reset_obj, ads1x9x_ads1x9x_reset);
 
 //|     def sample_size_get(self) -> None:
-//|         """Get the ADS1x9x sample size.
+//|         """Get the ADS1x9x sample size
 //|
 //|         :return: Sample size"""
 STATIC mp_obj_t ads1x9x_ads1x9x_sample_size_get(mp_obj_t self_in) {
@@ -125,7 +123,7 @@ STATIC mp_obj_t ads1x9x_ads1x9x_sample_size_get(mp_obj_t self_in) {
 MP_DEFINE_CONST_FUN_OBJ_1(ads1x9x_ads1x9x_sample_size_get_obj, ads1x9x_ads1x9x_sample_size_get);
 
 //|     def filter_set(self, filter) -> None:
-//|         """Set filter type for ADS1x9x.
+//|         """Set filter type for ADS1x9x
 //|
 //|         :param int filter: The filter enum to write
 //|         :return: None"""
@@ -139,7 +137,7 @@ STATIC mp_obj_t ads1x9x_ads1x9x_filter_set(mp_obj_t self_in, mp_obj_t filter) {
 MP_DEFINE_CONST_FUN_OBJ_2(ads1x9x_ads1x9x_filter_set_obj, ads1x9x_ads1x9x_filter_set);
 
 //|     def read_reg(self, address) -> int:
-//|         """Read a ADS1x9x register.
+//|         """Read a ADS1x9x register
 //|
 //|         :param int address: The register address to read from
 //|         :return: register value"""
@@ -152,7 +150,7 @@ STATIC mp_obj_t ads1x9x_ads1x9x_read_reg(mp_obj_t self_in, mp_obj_t reg_addr) {
 MP_DEFINE_CONST_FUN_OBJ_2(ads1x9x_ads1x9x_read_reg_obj, ads1x9x_ads1x9x_read_reg);
 
 //|     def write_reg(self, address, value) -> None:
-//|         """Write value to a ADS1x9x register.
+//|         """Write value to a ADS1x9x register
 //|
 //|         :param int address: The register address to write to
 //|         :param int value: The value address to write
@@ -170,7 +168,7 @@ MP_DEFINE_CONST_FUN_OBJ_3(ads1x9x_ads1x9x_write_reg_obj, ads1x9x_ads1x9x_write_r
 
 
 //|     def start(self) -> None:
-//|         """Start ADS1x9x sampling.
+//|         """Start ADS1x9x sampling
 //|
 //|         :return: None"""
 
@@ -184,7 +182,7 @@ STATIC mp_obj_t ads1x9x_ads1x9x_start(mp_obj_t self_in) {
 MP_DEFINE_CONST_FUN_OBJ_1(ads1x9x_ads1x9x_start_obj, ads1x9x_ads1x9x_start);
 
 //|     def stop(self) -> None:
-//|         """Stop ADS1x9x sampling.
+//|         """Stop ADS1x9x sampling
 //|
 //|         :return: None"""
 
@@ -198,7 +196,7 @@ STATIC mp_obj_t ads1x9x_ads1x9x_stop(mp_obj_t self_in) {
 MP_DEFINE_CONST_FUN_OBJ_1(ads1x9x_ads1x9x_stop_obj, ads1x9x_ads1x9x_stop);
 
 //|     def read(self, buffer) -> int:
-//|         """Read ADS1x9x data.
+//|         """Read ADS1x9x data
 //|
 //|         :param buffer: Buffer to write data to
 //|         :return: size read"""
