@@ -47,12 +47,12 @@
 //|     Interacts with an BNO080 over I2C.
 //|     """
 //|
-//|     def __init__(self, bus: busio.I2C, addr: int = 0x4A, debug: bool = False) -> None:
+//|     def __init__(self, bus: busio.I2C, addr: int = 0x4B, debug: bool = False) -> None:
 //|         """
 //|         Construct a BNO080I2C object with the given properties
 //|
 //|         :param busio.I2C i2c: The I2C bus
-//|         :param int addr: The BNO080 I2C address (optional, default=0x4A)
+//|         :param int addr: The BNO080 I2C address (optional, default=0x4B)
 //|         :param bool debug: Enable debugging output (optional, default=False)
 //|
 //|         Example usage:
