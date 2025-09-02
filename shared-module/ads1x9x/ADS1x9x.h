@@ -31,6 +31,8 @@
 
 #include "lib/cionic/diff_filter.h"
 #include "lib/cionic/emg_iir.h"
+#include "lib/cionic/ringbuf.h"
+#include "supervisor/background_callback.h"
 
 #include "common-hal/busio/SPI.h"
 #include "common-hal/digitalio/DigitalInOut.h"
@@ -58,9 +60,9 @@ typedef struct {
     digitalio_digitalinout_obj_t pwdn;
     diff_filter_t diff_filter;
     iir_filter_t iir_filter;
-    uint32_t sample_bytes;
+    ringbuf_t *rb;
+    uint16_t sample_bytes;
     bool started;
-    bool lock;
     uint8_t id;
     uint8_t num_chan;
     uint8_t filter;
@@ -68,6 +70,10 @@ typedef struct {
     float *loff;
     float all_norms[ADS1X9X_NUM_CHAN]; // all channel norms
     uint8_t chan[ADS1X9X_NUM_CHAN];
+    background_callback_t bg_cb;      // background task handle
+    volatile uint16_t drdy_pending;   // count of DRDY events to service
+    uint16_t frame_len;               // status + channels*bytes (computed at start)
+    uint16_t drops;                   // overflow counter (ring full)
 } ads1x9x_ADS1x9x_obj_t;
 
 // System Commands
