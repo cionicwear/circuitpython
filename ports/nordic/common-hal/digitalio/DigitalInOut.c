@@ -152,13 +152,13 @@ digitalio_pull_t common_hal_digitalio_digitalinout_get_pull(
     }
 }
 
-void common_hal_digitalio_digitalinout_set_irq(digitalio_digitalinout_obj_t *self, digitalio_edge_t edge, 
+void common_hal_digitalio_digitalinout_set_irq(digitalio_digitalinout_obj_t *self, digitalio_edge_t edge,
     digitalio_pull_t pull, io_irq_t *cb, void *arg) {
     nrf_gpiote_polarity_t polarity = NRF_GPIOTE_POLARITY_TOGGLE;
     nrf_gpio_pin_pull_t hal_pull = NRF_GPIO_PIN_NOPULL;
     uint32_t pin = self->pin->number;
 
-    if(cb != NULL){
+    if (cb != NULL) {
         self->cb = cb;
         self->cb_arg = arg;
     }

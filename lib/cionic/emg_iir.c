@@ -22,10 +22,10 @@ float emg_lowpass_filter_sos[NO_OF_BQS][NO_OF_COEFFS_PER_BQ] = {
 // b0, b1, b2, a0, a1, a2
 // therefore
 // a0*y[n] = b0*x[0] + b1*x[1] + b2*x[2] -a1*y[1] -a2*y[2]
-// or 
+// or
 // y[n] = b0*x[0] + b1*x[1] + b2*x[2] -a1*y[1] -a2*y[2]
 // since a0 is normalized to 1.0.
-float 
+float
 emg_iir(emg_filter_state_t *state, float val)
 {
     float y;
@@ -34,20 +34,20 @@ emg_iir(emg_filter_state_t *state, float val)
         // update the input delay line
         state->x[i][2] = state->x[i][1];
         state->x[i][1] = state->x[i][0];
-        state->x[i][0] = val; 
-       
+        state->x[i][0] = val;
+
         y = 0;
         y += state->x[i][0]*state->coeffs[i][0];
         y += state->x[i][1]*state->coeffs[i][1];
         y += state->x[i][2]*state->coeffs[i][2];
-    
+
         // skip one coeff here
         y -= state->y[i][0]*state->coeffs[i][4];
         y -= state->y[i][1]*state->coeffs[i][5];
 
         // update the output delay line
         state->y[i][1] = state->y[i][0];
-        state->y[i][0] = y; 
+        state->y[i][0] = y;
         val = y;
     }
     return y;
@@ -61,11 +61,11 @@ emg_iir_init(emg_filter_state_t *state)
         // update the input delay line
         state->x[i][2] = 0;
         state->x[i][1] = 0;
-        state->x[i][0] = 0; 
-    
+        state->x[i][0] = 0;
+
         // update the output delay line
         state->y[i][1] = 0;
-        state->y[i][0] = 0; 
+        state->y[i][0] = 0;
     }
 }
 
@@ -73,13 +73,13 @@ emg_iir_init(emg_filter_state_t *state)
 #define NO_EMG_RMS_DC_BLOCKING
 // the diff is not working that great
 #define NO_EMG_RMS_DIFF
-double 
+double
 emg_mwa_rms(emg_mwa_state_t *state, float val)
 {
     // subtract the oldest value
-    state->sum -= state->mw[state->write_ptr];    
+    state->sum -= state->mw[state->write_ptr];
     // update the delay line
-    state->mw[state->write_ptr] = val*val;    
+    state->mw[state->write_ptr] = val*val;
     state->write_ptr = (state->write_ptr+1) % EMG_RMS_MA_SIZE;
 
     // the latest sum
@@ -87,7 +87,7 @@ emg_mwa_rms(emg_mwa_state_t *state, float val)
     double result = state->sum;
     result = sqrt(result/EMG_RMS_MA_SIZE);
 #ifdef EMG_RMS_DC_BLOCKING
-    result = result + state->dc; 
+    result = result + state->dc;
     state->dc = state->dc - result*state->alpha;
 #endif
 #ifdef EMG_RMS_DIFF
@@ -105,12 +105,12 @@ iir_filter_init(iir_filter_t *filter)
     for( int i=0; i<IIR_NUM_CHANNELS; i++) {
         emg_iir_init(&filter->emg_lowpass_iir_state[i]);
         emg_iir_init(&filter->emg_highpass_iir_state[i]);
-        filter->emg_lowpass_iir_state[i].coeffs = emg_lowpass_filter_sos; 
-        filter->emg_highpass_iir_state[i].coeffs = emg_highpass_filter_sos; 
+        filter->emg_lowpass_iir_state[i].coeffs = emg_lowpass_filter_sos;
+        filter->emg_highpass_iir_state[i].coeffs = emg_highpass_filter_sos;
         filter->emg_mwa_state[i].sum = 0;
         filter->emg_mwa_state[i].past_sum = 0;
         filter->emg_mwa_state[i].alpha = EMG_RMS_MA_DC_BLOCK_ALPHA;
-        filter->emg_mwa_state[i].write_ptr = 0; 
+        filter->emg_mwa_state[i].write_ptr = 0;
     }
 }
 

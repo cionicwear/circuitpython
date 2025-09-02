@@ -43,8 +43,13 @@
 //|     Interacts with an ADS1x9x over SPI."""
 //|
 //|     def __init__(
-//|         self, bus: busio.SPI, cs: microcontroller.Pin, rst: microcontroller.Pin, 
-//|         drdy: microcontroller.Pin, start: microcontroller.Pin, pwdn: microcontroller.Pin
+//|         self,
+//|         bus: busio.SPI,
+//|         cs: microcontroller.Pin,
+//|         rst: microcontroller.Pin,
+//|         drdy: microcontroller.Pin,
+//|         start: microcontroller.Pin,
+//|         pwdn: microcontroller.Pin,
 //|     ) -> None:
 //|         """Construct an SPI ADS1x9x object with the given properties
 //|
@@ -65,6 +70,7 @@
 //|             import ads1x9x
 //|
 //|             ads = ads1x9x.ADS1x9x(board.SPI(), board.ADS_CS, board.ADS_RST, board.ADS_DRDY, board.ADS_START, board.ADS_PWDN)
+//|         """
 
 STATIC mp_obj_t ads1x9x_ads1x9x_make_new(const mp_obj_type_t *type, size_t n_args, size_t n_kw, const mp_obj_t *all_args) {
     enum { ARG_spi, ARG_cs, ARG_rst, ARG_drdy, ARG_start, ARG_pwdn, NUM_ARGS };
@@ -210,6 +216,7 @@ STATIC MP_DEFINE_CONST_FUN_OBJ_3(ads1x9x_ads1x9x_read_obj, ads1x9x_ads1x9x_read)
 //|         """Disable permanently.
 //|
 //|         :return: None"""
+//|
 STATIC mp_obj_t ads1x9x_ads1x9x_deinit(mp_obj_t self_in) {
     ads1x9x_ADS1x9x_obj_t *self = (ads1x9x_ADS1x9x_obj_t *)self_in;
     common_hal_ads1x9x_ADS1x9x_deinit(self);
