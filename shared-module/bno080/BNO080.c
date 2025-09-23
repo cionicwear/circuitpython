@@ -43,10 +43,20 @@
 
 
 STATIC void lock_bus(bno080_BNO080_obj_t *self) {
-    if (!common_hal_busio_spi_try_lock(self->bus)) {
-        mp_raise_OSError(EAGAIN);
-        return;
+    int retry_count = 0;
+    const int max_retries = 10;
+    
+    while (retry_count < max_retries) {
+        if (common_hal_busio_spi_try_lock(self->bus)) {
+            return;  // Successfully locked
+        }
+        retry_count++;
+        // Small delay between retry attempts
+        mp_hal_delay_ms(1);
     }
+    
+    // If we get here, we failed to acquire the lock after retries
+    mp_raise_OSError(EAGAIN);
 }
 
 STATIC void unlock_bus(bno080_BNO080_obj_t *self) {
@@ -110,6 +120,7 @@ STATIC int bno080_txrx(bno080_BNO080_obj_t *self, uint8_t *txbuf, uint8_t *rxbuf
 STATIC int bno080_spi_send(bno080_BNO080_obj_t *self, uint8_t channel, const uint8_t *buf, int len) {
     lock_bus(self);
     if ((self->txlen + len + 4) > (int)sizeof(self->txbuf)) {
+        unlock_bus(self);
         return ENOMEM;
     }
 
@@ -657,19 +668,23 @@ STATIC int bno080_on_read(bno080_BNO080_obj_t *self, elapsed_t timestamp, uint8_
     return 0;
 }
 STATIC int bno080_txrx_spi(bno080_BNO080_obj_t *self, uint8_t **outbuf) {
-    lock_bus(self);                           // select
+    // Set chip select and PS0 without locking the bus
     common_hal_digitalio_digitalinout_set_value(&self->cs, false);
     common_hal_digitalio_digitalinout_set_value(&self->ps0, true);
 
     int rxlen = 0;              // read from incoming header
     int txlen = self->txbuf[0];  // size of outgoing transaction
 
-    // transact headers - 4 bytes each
+    // Prepare for header transaction
     uint8_t *hobuf = self->txbuf;
     uint8_t *hibuf = self->rxbuf;
     int holen = (txlen >= 4) ? 4 : 0;
     int hilen = 4;
+    
+    // Only lock the bus during the actual SPI transfer
+    lock_bus(self);
     hilen = bno080_txrx(self, hobuf, hibuf, holen, hilen);
+    unlock_bus(self);
 
     // figure out the size of the receive
     rxlen = READ_LE(uint16_t, hibuf);
@@ -679,7 +694,7 @@ STATIC int bno080_txrx_spi(bno080_BNO080_obj_t *self, uint8_t **outbuf) {
         rxlen &= 0x7fff;
     }
 
-    // transact payloads
+    // Prepare for payload transaction
     uint8_t *pobuf = self->txbuf + 4;
     uint8_t *pibuf = self->rxbuf + 4;
 
@@ -687,7 +702,12 @@ STATIC int bno080_txrx_spi(bno080_BNO080_obj_t *self, uint8_t **outbuf) {
     int polen = txlen - 4;
     int pilen = rxlen - 4;
 
-    pilen = bno080_txrx(self, pobuf, pibuf, polen, pilen);
+    // Only lock the bus during the actual SPI transfer
+    if (polen > 0 || pilen > 0) {
+        lock_bus(self);
+        pilen = bno080_txrx(self, pobuf, pibuf, polen, pilen);
+        unlock_bus(self);
+    }
 
     *outbuf = self->rxbuf;
 
@@ -700,8 +720,7 @@ STATIC int bno080_txrx_spi(bno080_BNO080_obj_t *self, uint8_t **outbuf) {
 
     // deselect
     common_hal_digitalio_digitalinout_set_value(&self->cs, true);
-    unlock_bus(self);
-
+    
     return hilen + pilen;
 }
 
@@ -768,6 +787,10 @@ void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj
     common_hal_digitalio_digitalinout_construct(&self->irq, irq);
     common_hal_digitalio_digitalinout_set_irq(&self->irq, EDGE_FALL, PULL_UP, bno080_isr_recv, self);
 
+    // // Construct the IRQ pin but don't set up the interrupt handler yet
+    // common_hal_digitalio_digitalinout_construct(&self->irq, irq);
+    // common_hal_digitalio_digitalinout_switch_to_input(&self->irq, PULL_UP);
+
     lock_bus(self);
     common_hal_busio_spi_configure(self->bus, BNO_BAUDRATE, 1, 1, 8);
     unlock_bus(self);
@@ -775,6 +798,9 @@ void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj
     common_hal_bno080_BNO080_reset(self);
 
     while (!self->init_done) {
+        // Manually poll for data instead of relying on interrupts during init
+        // bno080_spi_sample(self);
+
         mp_handle_pending(true);
         // Allow user to break out of a timeout with a KeyboardInterrupt.
         if (mp_hal_is_interrupted()) {
@@ -790,6 +816,9 @@ void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj
     }
 
     mp_printf(&mp_plat_print, "BNO id=%x found\n", self->pid.id);
+
+    // Now that initialization is complete, enable the interrupt handler
+    // common_hal_digitalio_digitalinout_set_irq(&self->irq, EDGE_FALL, PULL_UP, bno080_isr_recv, self);
     return;
 }
 
