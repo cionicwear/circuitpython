@@ -27,7 +27,9 @@
 #include "common-hal/microcontroller/Pin.h"
 #include "shared-bindings/busio/SPI.h"
 #include "shared-module/bno080/BNO080.h"
+#include "supervisor/shared/tick.h"
 #include "lib/cionic/orientation.h"
+
 
 #include "shared-bindings/microcontroller/__init__.h"
 #include "shared-bindings/time/__init__.h"
@@ -41,23 +43,25 @@
 
 #define BNO_BAUDRATE    (1000000)
 
+// Common fn inits
+STATIC int bno080_spi_sample(bno080_BNO080_obj_t *self);
 
-STATIC void lock_bus(bno080_BNO080_obj_t *self) {
+// return 0 on success, negative errno on failure
+STATIC int lock_bus(bno080_BNO080_obj_t *self) {
     int retry_count = 0;
     const int max_retries = 10;
-    
+
     while (retry_count < max_retries) {
         if (common_hal_busio_spi_try_lock(self->bus)) {
-            return;  // Successfully locked
+            return 0;  // Successfully locked
         }
         retry_count++;
-        // Small delay between retry attempts
+        // Small backoff between attempts
         mp_hal_delay_ms(1);
     }
-    
-    // If we get here, we failed to acquire the lock after retries
-    mp_raise_OSError(EAGAIN);
+    return -EAGAIN;
 }
+
 
 STATIC void unlock_bus(bno080_BNO080_obj_t *self) {
     common_hal_busio_spi_unlock(self->bus);
@@ -69,11 +73,22 @@ STATIC void bno080_post_response(bno080_BNO080_obj_t *self, uint8_t response_id)
 
 STATIC void bno080_wait_for_response(bno080_BNO080_obj_t *self, uint8_t response_id) {
     while (self->resp != response_id) {
+        // CRITICAL FIX: Poll for data while waiting
+        // Check both the ISR flag and the IRQ pin directly, drain
+        while (self->data_ready_count > 0 || !common_hal_digitalio_digitalinout_get_value(&self->irq)) {
+            self->data_ready_count--;
+            bno080_spi_sample(self);
+        }
+        
         mp_handle_pending(true);
+        
         // Allow user to break out of a timeout with a KeyboardInterrupt.
         if (mp_hal_is_interrupted()) {
             return;
         }
+        
+        // Small delay to avoid busy-waiting
+        mp_hal_delay_ms(1);
     }
 
     self->resp = 0;
@@ -118,7 +133,12 @@ STATIC int bno080_txrx(bno080_BNO080_obj_t *self, uint8_t *txbuf, uint8_t *rxbuf
  * @returns        0 on success else ERROR
  */
 STATIC int bno080_spi_send(bno080_BNO080_obj_t *self, uint8_t channel, const uint8_t *buf, int len) {
-    lock_bus(self);
+    int rc = lock_bus(self);
+    if (rc) {
+        // Couldn't get the bus; caller should handle.
+        mp_printf(&mp_plat_print, "bno080_spi_send: lock_bus failed %d\n", rc);
+        return rc;
+    }
     if ((self->txlen + len + 4) > (int)sizeof(self->txbuf)) {
         unlock_bus(self);
         return ENOMEM;
@@ -433,7 +453,7 @@ STATIC void bno080_control(bno080_BNO080_obj_t *self, elapsed_t timestamp, const
             bno080_pid_response(self, timestamp, buf, len);
             break;
         default:
-            mp_printf(&mp_plat_print, "unknown control %d\n", control_id);
+            // mp_printf(&mp_plat_print, "unknown control %d\n", control_id);
             break;
     }
 
@@ -682,7 +702,12 @@ STATIC int bno080_txrx_spi(bno080_BNO080_obj_t *self, uint8_t **outbuf) {
     int hilen = 4;
     
     // Only lock the bus during the actual SPI transfer
-    lock_bus(self);
+    int rc = lock_bus(self);
+    if (rc) {
+        mp_printf(&mp_plat_print, "bno080_txrx_spi: lock_bus failed %d\n", rc);
+        // Couldn't get the bus; caller should handle.
+        return rc;
+    }
     hilen = bno080_txrx(self, hobuf, hibuf, holen, hilen);
     unlock_bus(self);
 
@@ -704,7 +729,11 @@ STATIC int bno080_txrx_spi(bno080_BNO080_obj_t *self, uint8_t **outbuf) {
 
     // Only lock the bus during the actual SPI transfer
     if (polen > 0 || pilen > 0) {
-        lock_bus(self);
+        rc = lock_bus(self);
+        if (rc) {
+            mp_printf(&mp_plat_print, "bno080_txrx_spi: lock_bus failed %d\n", rc);
+            return rc;
+        }
         pilen = bno080_txrx(self, pobuf, pibuf, polen, pilen);
         unlock_bus(self);
     }
@@ -744,11 +773,11 @@ STATIC int bno080_spi_sample(bno080_BNO080_obj_t *self) {
 
     uint8_t channel = buf[2];
     uint8_t seqnum = buf[3];
-    uint8_t expectedseq = self->read_seqnums[channel] + 1;
-    if (seqnum != expectedseq) {
-        // DISABLED ONLY FOR FES BUILD - PLEASE REENABLE
-        // LOG(ERROR, "[channel %d] expected seq %d, got %d", channel, expectedseq, seqnum);
-    }
+    // uint8_t expectedseq = self->read_seqnums[channel] + 1;
+    // if (seqnum != expectedseq) {
+    //     // DISABLED ONLY FOR FES BUILD - PLEASE REENABLE
+    //     // LOG(ERROR, "[channel %d] expected seq %d, got %d", channel, expectedseq, seqnum);
+    // }
     self->read_seqnums[channel] = seqnum;
 
     return bno080_on_read(self, timestamp, buf, len);
@@ -766,16 +795,77 @@ STATIC int bno080_read_pid(bno080_BNO080_obj_t *self) {
     return 0;
 }
 
+/**
+ * Background callback function that runs automatically
+ * 
+ * This function is called by the CircuitPython supervisor during idle time.
+ * It checks if data is ready and processes it, ensuring high-fidelity data
+ * updates without requiring explicit read() calls from user code.
+ * 
+ * IMPORTANT: This runs in a restricted context (background callback, not ISR).
+ * It's safe to do I/O operations here, but we should still be relatively quick.
+ * 
+ * @param self Pointer to the BNO080 object
+ */
+STATIC void bno080_background_poll(void *self_in) {
+    bno080_BNO080_obj_t *self = (bno080_BNO080_obj_t *)self_in;
+
+    if (!self->background_enabled) {
+        return;
+    }
+
+    // Drain pending samples
+    while (self->data_ready_count > 0) {
+        self->data_ready_count--;
+        int rc = bno080_spi_sample(self);
+        if (rc == -EAGAIN) {
+            mp_printf(&mp_plat_print, "bno080_background_poll: EAGAIN\n");
+            // BUS was busy — requeue ourselves to try later and stop now.
+            background_callback_add(&self->background_cb, bno080_background_poll, self);
+            return;
+        } else if (rc < 0) {
+            mp_printf(&mp_plat_print, "bno080_spi_sample error %d\n", rc);
+            break;
+        }
+        // If rc == 0 it means "no cargo" — continue draining if count > 0.
+    }
+
+    // Defensive: if IRQ pin still low, read until cleared (but stop on contention)
+    while (!common_hal_digitalio_digitalinout_get_value(&self->irq)) {
+        int rc = bno080_spi_sample(self);
+        if (rc == -EAGAIN) {
+            mp_printf(&mp_plat_print, "bno080_background_poll (defensive): EAGAIN during IRQ drain\n");
+            background_callback_add(&self->background_cb, bno080_background_poll, self);
+            return;
+        } else if (rc <= 0) {
+            break;
+        }
+    }
+}
+
 STATIC void bno080_isr_recv(void *arg) {
     bno080_BNO080_obj_t *self = (bno080_BNO080_obj_t *)arg;
 
-    bno080_spi_sample(self);
+    // Increment pending samples counter (do not clobber multiple raises)
+    self->data_ready_count++;
+
+    // Queue background callback to process the data
+    // Only queue if this is the first pending item to avoid queue explosion.
+    if (self->data_ready_count == 1) {
+        background_callback_add(&self->background_cb, bno080_background_poll, self);
+    }
 }
 
 void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj_t *bus, const mcu_pin_obj_t *cs, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *ps0, const mcu_pin_obj_t *bootn, const mcu_pin_obj_t *irq) {
     self->bus = bus;
     self->resp = 0;
     self->init_done = false;
+    self->data_ready_count = 0;
+    // Initialize background callback for automatic polling
+    self->background_cb.fun = bno080_background_poll;
+    self->background_cb.data = self;
+    self->background_enabled = true;
+
     common_hal_digitalio_digitalinout_construct(&self->cs, cs);
     common_hal_digitalio_digitalinout_switch_to_output(&self->cs, true, DRIVE_MODE_PUSH_PULL);
     common_hal_digitalio_digitalinout_construct(&self->rst, rst);
@@ -784,29 +874,63 @@ void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj
     common_hal_digitalio_digitalinout_switch_to_output(&self->ps0, true, DRIVE_MODE_PUSH_PULL);
     common_hal_digitalio_digitalinout_construct(&self->bootn, bootn);
     common_hal_digitalio_digitalinout_switch_to_output(&self->bootn, true, DRIVE_MODE_PUSH_PULL);
-    common_hal_digitalio_digitalinout_construct(&self->irq, irq);
-    common_hal_digitalio_digitalinout_set_irq(&self->irq, EDGE_FALL, PULL_UP, bno080_isr_recv, self);
-
-    // // Construct the IRQ pin but don't set up the interrupt handler yet
     // common_hal_digitalio_digitalinout_construct(&self->irq, irq);
-    // common_hal_digitalio_digitalinout_switch_to_input(&self->irq, PULL_UP);
+    // common_hal_digitalio_digitalinout_set_irq(&self->irq, EDGE_FALL, PULL_UP, bno080_isr_recv, self);
 
-    lock_bus(self);
+    // Construct the IRQ pin but don't set up the interrupt handler yet
+    common_hal_digitalio_digitalinout_construct(&self->irq, irq);
+    common_hal_digitalio_digitalinout_switch_to_input(&self->irq, PULL_UP);
+
+    int rc = lock_bus(self);
+    if (rc) {
+        mp_printf(&mp_plat_print, "common_hal_bno080_BNO080_construct: lock_bus failed %d\n", rc);
+        mp_raise_OSError(rc);
+        return;
+    }
     common_hal_busio_spi_configure(self->bus, BNO_BAUDRATE, 1, 1, 8);
     unlock_bus(self);
 
     common_hal_bno080_BNO080_reset(self);
 
-    while (!self->init_done) {
-        // Manually poll for data instead of relying on interrupts during init
-        // bno080_spi_sample(self);
+    // while (!self->init_done) {
+    //     // Manually poll for data instead of relying on interrupts during init
+    //     // bno080_spi_sample(self);
 
+    //     mp_handle_pending(true);
+    //     // Allow user to break out of a timeout with a KeyboardInterrupt.
+    //     if (mp_hal_is_interrupted()) {
+    //         return;
+    //     }
+    // }
+    /**
+     * During initialization, we manually poll for data instead of relying on
+     * interrupts. This is safer because:
+     * 1. The interrupt handler might not be fully set up yet
+     * 2. We need tight control over timing during init
+     * 3. Avoids potential race conditions during setup
+     */
+    while (!self->init_done) {
+        // Check if IRQ pin is LOW (data ready)
+        if (!common_hal_digitalio_digitalinout_get_value(&self->irq)) {
+            // Process the data
+            bno080_spi_sample(self);
+        }
+        
+        // Allow Python VM to handle pending tasks
         mp_handle_pending(true);
-        // Allow user to break out of a timeout with a KeyboardInterrupt.
+        
+        // Allow user to break out with Ctrl+C
         if (mp_hal_is_interrupted()) {
+            // Clean up if interrupted during init
+            common_hal_bno080_BNO080_deinit(self);
             return;
         }
+        
+        // Small delay to avoid busy-waiting (1ms)
+        mp_hal_delay_ms(1);
     }
+
+    mp_printf(&mp_plat_print, "BNO080 initialization done\n");
 
     bno080_read_pid(self);
 
@@ -818,7 +942,8 @@ void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj
     mp_printf(&mp_plat_print, "BNO id=%x found\n", self->pid.id);
 
     // Now that initialization is complete, enable the interrupt handler
-    // common_hal_digitalio_digitalinout_set_irq(&self->irq, EDGE_FALL, PULL_UP, bno080_isr_recv, self);
+    common_hal_digitalio_digitalinout_set_irq(&self->irq, EDGE_FALL, PULL_UP, bno080_isr_recv, self);
+    mp_printf(&mp_plat_print, "BNO080 interrupts enabled\n");
     return;
 }
 
@@ -887,6 +1012,33 @@ int common_hal_bno080_BNO080_set_feature(bno080_BNO080_obj_t *self, uint8_t feat
     return rc;
 }
 
+// /**
+//  * Internal function to poll the sensor for new data
+//  * 
+//  * This is called automatically by read() to process any pending data.
+//  * By doing the heavy SPI work here instead of in the ISR, we avoid
+//  * blocking USB interrupts and prevent system lockups.
+//  * 
+//  * @param self Pointer to the BNO080 object
+//  * @return 0 on success, negative error code on failure
+//  */
+// STATIC int bno080_poll_internal(bno080_BNO080_obj_t *self) {
+//     // Check if the ISR has signaled that data is ready
+//     if (!self->data_ready) {
+//         return 0;  // No data ready, nothing to do
+//     }
+    
+//     // Clear the flag FIRST to avoid missing an interrupt that occurs
+//     // while we're processing this data
+//     self->data_ready = false;
+    
+//     // Now perform the actual SPI transaction to read the sensor data
+//     // This is safe to do here because we're in normal context, not an ISR
+//     int result = bno080_spi_sample(self);
+    
+//     return result;
+// }
+
 mp_obj_t common_hal_bno080_BNO080_read(bno080_BNO080_obj_t *self, uint8_t report_id) {
     // mp_obj_t fquat[QUAT_DIMENSION];
     // int rc = 0;
@@ -908,13 +1060,19 @@ mp_obj_t common_hal_bno080_BNO080_read(bno080_BNO080_obj_t *self, uint8_t report
             return mp_obj_new_list(GRAV_DIMENSION, self->grav);
     }
 
-    return NULL;
+    return mp_const_none;
 }
 
 void common_hal_bno080_BNO080_deinit(bno080_BNO080_obj_t *self) {
     if (!self->bus) {
         return;
     }
+
+    // Disable background polling before cleanup
+    self->background_enabled = false;
+    
+    // Remove any pending background callbacks
+    background_callback_reset();
 
     self->bus = NULL;
 
@@ -923,5 +1081,6 @@ void common_hal_bno080_BNO080_deinit(bno080_BNO080_obj_t *self) {
     common_hal_digitalio_digitalinout_deinit(&self->ps0);
     common_hal_digitalio_digitalinout_deinit(&self->bootn);
     common_hal_digitalio_digitalinout_deinit(&self->irq);
+    
     return;
 }

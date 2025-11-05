@@ -34,6 +34,8 @@
 #include "common-hal/busio/SPI.h"
 #include "common-hal/digitalio/DigitalInOut.h"
 
+#include "supervisor/background_callback.h"
+
 #include "BNO080_reg.h"
 
 #define BNO080_HEADER_SIZE 4
@@ -135,6 +137,23 @@ typedef struct {
     elapsed_t last_timestamp; // 100us since boot
     uint8_t resp;
     bool init_done;
+
+    // Flag set by ISR when data is available, cleared by polling code
+    // Must be volatile since it's accessed by both ISR and main code
+    volatile int data_ready_count;
+
+    /**
+     * Background callback for automatic polling.
+     * This allows the sensor to be polled automatically in the background
+     * without requiring explicit read() calls, maintaining high data fidelity.
+     */
+    background_callback_t background_cb;
+    
+    /**
+     * Flag to track if background polling is enabled.
+     * Set to true when sensor is active, false when deinit'd.
+     */
+    bool background_enabled;
 } bno080_BNO080_obj_t;
 
 void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj_t *bus, const mcu_pin_obj_t *cs, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *ps0, const mcu_pin_obj_t *bootn, const mcu_pin_obj_t *irq);
