@@ -848,7 +848,6 @@ STATIC void bno080_unary_rotation(bno080_BNO080_obj_t *self, uint8_t feature) {
         case BNO080_SRID_ROTATION_VECTOR:
             if (self->selected_rotation != 0 && self->selected_rotation != feature) {
                 uint8_t disable = self->selected_rotation;
-                mp_printf(&mp_plat_print, "unary_rotation: Disabling feature %d\n", disable);
                 common_hal_bno080_BNO080_set_feature(self, disable, 0, 0, 0, 0, 0);
             }
             self->selected_rotation = feature;
@@ -860,9 +859,7 @@ STATIC void bno080_unary_rotation(bno080_BNO080_obj_t *self, uint8_t feature) {
 
 int common_hal_bno080_BNO080_set_feature(bno080_BNO080_obj_t *self, uint8_t feature, uint32_t refresh_us, uint32_t batch_us, uint8_t flags, uint16_t sns, uint32_t cfg) {
     int rc = 0;
-    mp_printf(&mp_plat_print, "checking rotation for feature %d\n", feature);
     bno080_unary_rotation(self, feature);
-    mp_printf(&mp_plat_print, "defining command for feature %d\n", feature);
 
     const uint8_t command[17] = {
         BNO080_SET_FEATURE_COMMAND,
