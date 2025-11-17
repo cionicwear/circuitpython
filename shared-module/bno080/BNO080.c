@@ -753,6 +753,24 @@ STATIC void bno080_isr_recv(void *arg) {
     bno080_spi_sample(self);
 }
 
+STATIC void bno080_init_data_arrays(bno080_BNO080_obj_t *self) {
+    for (int i = 0; i < QUAT_DIMENSION; i++) {
+        self->fquat[i] = mp_obj_new_float(0.0f);
+    }
+    for (int i = 0; i < ACCEL_DIMENSION; i++) {
+        self->accel[i] = mp_obj_new_float(0.0f);
+    }
+    for (int i = 0; i < GYRO_DIMENSION; i++) {
+        self->gyro[i] = mp_obj_new_float(0.0f);
+    }
+    for (int i = 0; i < MAG_DIMENSION; i++) {
+        self->mag[i] = mp_obj_new_float(0.0f);
+    }
+    for (int i = 0; i < GRAV_DIMENSION; i++) {
+        self->grav[i] = mp_obj_new_float(0.0f);
+    }
+}
+
 void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj_t *bus, const mcu_pin_obj_t *cs, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *ps0, const mcu_pin_obj_t *bootn, const mcu_pin_obj_t *irq) {
     self->bus = bus;
     self->resp = 0;
@@ -769,21 +787,7 @@ void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj
     common_hal_digitalio_digitalinout_set_irq(&self->irq, EDGE_FALL, PULL_UP, bno080_isr_recv, self);
 
     // Initialize data arrays to valid float objects (0.0)
-    for (int i = 0; i < QUAT_DIMENSION; i++) {
-        self->fquat[i] = mp_obj_new_float(0.0f);
-    }
-    for (int i = 0; i < ACCEL_DIMENSION; i++) {
-        self->accel[i] = mp_obj_new_float(0.0f);
-    }
-    for (int i = 0; i < GYRO_DIMENSION; i++) {
-        self->gyro[i] = mp_obj_new_float(0.0f);
-    }
-    for (int i = 0; i < MAG_DIMENSION; i++) {
-        self->mag[i] = mp_obj_new_float(0.0f);
-    }
-    for (int i = 0; i < GRAV_DIMENSION; i++) {
-        self->grav[i] = mp_obj_new_float(0.0f);
-    }
+    bno080_init_data_arrays(self);
 
     lock_bus(self);
     common_hal_busio_spi_configure(self->bus, BNO_BAUDRATE, 1, 1, 8);
@@ -822,21 +826,7 @@ void common_hal_bno080_BNO080_reset(bno080_BNO080_obj_t *self) {
     memset(self->write_seqnums, 0x00, sizeof(self->write_seqnums));
 
     // Re-initialize data arrays to valid float objects (0.0)
-    for (int i = 0; i < QUAT_DIMENSION; i++) {
-        self->fquat[i] = mp_obj_new_float(0.0f);
-    }
-    for (int i = 0; i < ACCEL_DIMENSION; i++) {
-        self->accel[i] = mp_obj_new_float(0.0f);
-    }
-    for (int i = 0; i < GYRO_DIMENSION; i++) {
-        self->gyro[i] = mp_obj_new_float(0.0f);
-    }
-    for (int i = 0; i < MAG_DIMENSION; i++) {
-        self->mag[i] = mp_obj_new_float(0.0f);
-    }
-    for (int i = 0; i < GRAV_DIMENSION; i++) {
-        self->grav[i] = mp_obj_new_float(0.0f);
-    }
+    bno080_init_data_arrays(self);
 }
 
 STATIC void bno080_unary_rotation(bno080_BNO080_obj_t *self, uint8_t feature) {
