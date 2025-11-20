@@ -753,6 +753,24 @@ STATIC void bno080_isr_recv(void *arg) {
     bno080_spi_sample(self);
 }
 
+STATIC void bno080_init_data_arrays(bno080_BNO080_obj_t *self) {
+    for (int i = 0; i < QUAT_DIMENSION; i++) {
+        self->fquat[i] = mp_obj_new_float(0.0f);
+    }
+    for (int i = 0; i < ACCEL_DIMENSION; i++) {
+        self->accel[i] = mp_obj_new_float(0.0f);
+    }
+    for (int i = 0; i < GYRO_DIMENSION; i++) {
+        self->gyro[i] = mp_obj_new_float(0.0f);
+    }
+    for (int i = 0; i < MAG_DIMENSION; i++) {
+        self->mag[i] = mp_obj_new_float(0.0f);
+    }
+    for (int i = 0; i < GRAV_DIMENSION; i++) {
+        self->grav[i] = mp_obj_new_float(0.0f);
+    }
+}
+
 void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj_t *bus, const mcu_pin_obj_t *cs, const mcu_pin_obj_t *rst, const mcu_pin_obj_t *ps0, const mcu_pin_obj_t *bootn, const mcu_pin_obj_t *irq) {
     self->bus = bus;
     self->resp = 0;
@@ -767,6 +785,9 @@ void common_hal_bno080_BNO080_construct(bno080_BNO080_obj_t *self, busio_spi_obj
     common_hal_digitalio_digitalinout_switch_to_output(&self->bootn, true, DRIVE_MODE_PUSH_PULL);
     common_hal_digitalio_digitalinout_construct(&self->irq, irq);
     common_hal_digitalio_digitalinout_set_irq(&self->irq, EDGE_FALL, PULL_UP, bno080_isr_recv, self);
+
+    // Initialize data arrays to valid float objects (0.0)
+    bno080_init_data_arrays(self);
 
     lock_bus(self);
     common_hal_busio_spi_configure(self->bus, BNO_BAUDRATE, 1, 1, 8);
@@ -827,7 +848,6 @@ int common_hal_bno080_BNO080_set_feature(bno080_BNO080_obj_t *self, uint8_t feat
     int rc = 0;
     bno080_unary_rotation(self, feature);
 
-
     const uint8_t command[17] = {
         BNO080_SET_FEATURE_COMMAND,
         feature,
@@ -868,14 +888,45 @@ mp_obj_t common_hal_bno080_BNO080_read(bno080_BNO080_obj_t *self, uint8_t report
         case BNO080_SRID_GEOMAGNETIC_ROTATION_VECTOR:
         case BNO080_SRID_GAME_ROTATION_VECTOR:
         case BNO080_SRID_ROTATION_VECTOR:
+            // Defensive: check for NULLs and re-initialize if needed
+            for (int i = 0; i < QUAT_DIMENSION; i++) {
+                if (self->fquat[i] == NULL) {
+                    mp_printf(&mp_plat_print, "Warning: fquat[%d] was NULL, reinitializing to 0.0\n", i);
+                    self->fquat[i] = mp_obj_new_float(0.0f);
+                }
+            }
             return mp_obj_new_list(QUAT_DIMENSION, self->fquat);
         case BNO080_SRID_ACCELEROMETER:
+            for (int i = 0; i < ACCEL_DIMENSION; i++) {
+                if (self->accel[i] == NULL) {
+                    mp_printf(&mp_plat_print, "Warning: accel[%d] was NULL, reinitializing to 0.0\n", i);
+                    self->accel[i] = mp_obj_new_float(0.0f);
+                }
+            }
             return mp_obj_new_list(ACCEL_DIMENSION, self->accel);
         case BNO080_SRID_GYROSCOPE:
+            for (int i = 0; i < GYRO_DIMENSION; i++) {
+                if (self->gyro[i] == NULL) {
+                    mp_printf(&mp_plat_print, "Warning: gyro[%d] was NULL, reinitializing to 0.0\n", i);
+                    self->gyro[i] = mp_obj_new_float(0.0f);
+                }
+            }
             return mp_obj_new_list(GYRO_DIMENSION, self->gyro);
         case BNO080_SRID_MAGNETIC_FIELD:
+            for (int i = 0; i < MAG_DIMENSION; i++) {
+                if (self->mag[i] == NULL) {
+                    mp_printf(&mp_plat_print, "Warning: mag[%d] was NULL, reinitializing to 0.0\n", i);
+                    self->mag[i] = mp_obj_new_float(0.0f);
+                }
+            }
             return mp_obj_new_list(MAG_DIMENSION, self->mag);
         case BNO080_SRID_GRAVITY:
+            for (int i = 0; i < GRAV_DIMENSION; i++) {
+                if (self->grav[i] == NULL) {
+                    mp_printf(&mp_plat_print, "Warning: grav[%d] was NULL, reinitializing to 0.0\n", i);
+                    self->grav[i] = mp_obj_new_float(0.0f);
+                }
+            }
             return mp_obj_new_list(GRAV_DIMENSION, self->grav);
     }
 
