@@ -186,8 +186,8 @@ uint32_t bno080_rotation_vector_config[] = { 0xccccccd, 0x410624e, 0x191eb852, 0
 
 const frs_write_t bno080_frs_writes[] = {
     // { frs_id, offset, data0, data1 }
-    { 0x3E2D, (sizeof(bno080_rotation_vector_config) / sizeof(bno080_rotation_vector_config[0])), bno080_rotation_vector_config },
-    { 0x3E2E, (sizeof(bno080_rotation_vector_config) / sizeof(bno080_rotation_vector_config[0])), bno080_rotation_vector_config }
+    { 0x3E2D, ARRAY_SIZE(bno080_rotation_vector_config), bno080_rotation_vector_config },
+    { 0x3E2E, ARRAY_SIZE(bno080_rotation_vector_config), bno080_rotation_vector_config }
 };
 
 STATIC int bno080_spi_frs(bno080_BNO080_obj_t *self) {
@@ -474,7 +474,7 @@ STATIC void bno080_report_accel(bno080_BNO080_obj_t *self, elapsed_t timestamp, 
      */
     uint8_t qp = 8;  /// per section 6.5.10 Q Point = 8
     // https://en.wikipedia.org/wiki/Q_(number_format)
-    float scale = pow(2.0, -qp);
+    float scale = powf(2.0f, -qp);
 
     self->accel[0] = READ_LE(int16_t, &pkt[4]) * scale; // x
     self->accel[1] = READ_LE(int16_t, &pkt[6]) * scale; // y
