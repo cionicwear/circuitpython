@@ -824,9 +824,6 @@ void common_hal_bno080_BNO080_reset(bno080_BNO080_obj_t *self) {
     // clear seqnums
     memset(self->read_seqnums, 0xff, sizeof(self->read_seqnums));
     memset(self->write_seqnums, 0x00, sizeof(self->write_seqnums));
-
-    // Re-initialize data arrays to valid float objects (0.0)
-    bno080_init_data_arrays(self);
 }
 
 STATIC void bno080_unary_rotation(bno080_BNO080_obj_t *self, uint8_t feature) {
