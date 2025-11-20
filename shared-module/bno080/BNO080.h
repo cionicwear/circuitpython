@@ -118,11 +118,11 @@ typedef struct {
     uint8_t read_seqnums[BNO080_NUM_CHANNELS];
     uint8_t write_seqnums[BNO080_NUM_CHANNELS];
     // float quat[QUAT_DIMENSION];        // most recent quaternion sample
-    mp_obj_t fquat[QUAT_DIMENSION];
-    mp_obj_t accel[ACCEL_DIMENSION];
-    mp_obj_t gyro[GYRO_DIMENSION];
-    mp_obj_t mag[MAG_DIMENSION];
-    mp_obj_t grav[GRAV_DIMENSION];
+    float fquat[QUAT_DIMENSION];
+    float accel[ACCEL_DIMENSION];
+    float gyro[GYRO_DIMENSION];
+    float mag[MAG_DIMENSION];
+    float grav[GRAV_DIMENSION];
     float calibration[CALIBRATION_LEN]; // calibration data
     uint8_t accuracy[BNO080_ACCURACY_COUNT];
     int selected_rotation;

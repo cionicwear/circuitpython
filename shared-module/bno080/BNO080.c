@@ -186,8 +186,8 @@ uint32_t bno080_rotation_vector_config[] = { 0xccccccd, 0x410624e, 0x191eb852, 0
 
 const frs_write_t bno080_frs_writes[] = {
     // { frs_id, offset, data0, data1 }
-    { 0x3E2D, ARRAY_SIZE(bno080_rotation_vector_config), bno080_rotation_vector_config },
-    { 0x3E2E, ARRAY_SIZE(bno080_rotation_vector_config), bno080_rotation_vector_config }
+    { 0x3E2D, (sizeof(bno080_rotation_vector_config) / sizeof(bno080_rotation_vector_config[0])), bno080_rotation_vector_config },
+    { 0x3E2E, (sizeof(bno080_rotation_vector_config) / sizeof(bno080_rotation_vector_config[0])), bno080_rotation_vector_config }
 };
 
 STATIC int bno080_spi_frs(bno080_BNO080_obj_t *self) {
@@ -449,13 +449,12 @@ STATIC void bno080_report_rotation(bno080_BNO080_obj_t *self, elapsed_t timestam
      * 13 Accuracy estimate MSB
      */
     uint8_t qp = 14;  /// per section 6.5.19 Q Point = 14
-    // https://en.wikipedia.org/wiki/Q_(number_format)
-    float scale = pow(2.0, -qp);
+    float scale = powf(2.0f, -qp);
 
-    self->fquat[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4]) * scale);  // i
-    self->fquat[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6]) * scale);  // j
-    self->fquat[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8]) * scale);  // k
-    self->fquat[3] = mp_obj_new_float(READ_LE(int16_t, &pkt[10]) * scale);  // real
+    self->fquat[0] = READ_LE(int16_t, &pkt[4]) * scale;  // i
+    self->fquat[1] = READ_LE(int16_t, &pkt[6]) * scale;  // j
+    self->fquat[2] = READ_LE(int16_t, &pkt[8]) * scale;  // k
+    self->fquat[3] = READ_LE(int16_t, &pkt[10]) * scale;  // real
 }
 
 STATIC void bno080_report_accel(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len) {
@@ -477,9 +476,9 @@ STATIC void bno080_report_accel(bno080_BNO080_obj_t *self, elapsed_t timestamp, 
     // https://en.wikipedia.org/wiki/Q_(number_format)
     float scale = pow(2.0, -qp);
 
-    self->accel[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4]) * scale); // x
-    self->accel[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6]) * scale); // y
-    self->accel[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8]) * scale); // z
+    self->accel[0] = READ_LE(int16_t, &pkt[4]) * scale; // x
+    self->accel[1] = READ_LE(int16_t, &pkt[6]) * scale; // y
+    self->accel[2] = READ_LE(int16_t, &pkt[8]) * scale; // z
 }
 
 STATIC void bno080_report_gyroscope(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int lens) {
@@ -498,11 +497,11 @@ STATIC void bno080_report_gyroscope(bno080_BNO080_obj_t *self, elapsed_t timesta
      * 9 Gyroscope Axis Z MSB
      */
     uint8_t qp = 9;  /// per section 6.5.13 Q Point = 9
-    float scale = pow(2.0, -qp);
+    float scale = powf(2.0f, -qp);
 
-    self->gyro[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4]) * scale); // x
-    self->gyro[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6]) * scale); // y
-    self->gyro[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8]) * scale); // z
+    self->gyro[0] = READ_LE(int16_t, &pkt[4]) * scale; // x
+    self->gyro[1] = READ_LE(int16_t, &pkt[6]) * scale; // y
+    self->gyro[2] = READ_LE(int16_t, &pkt[8]) * scale; // z
 }
 
 STATIC void bno080_report_magnetic_field(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len) {
@@ -521,11 +520,11 @@ STATIC void bno080_report_magnetic_field(bno080_BNO080_obj_t *self, elapsed_t ti
      * 9 Magnetic Field Axis Z MSB
      */
     uint8_t qp = 4;  /// per section 6.5.16 Q Point = 4
-    float scale = pow(2.0, -qp);
+    float scale = powf(2.0f, -qp);
 
-    self->mag[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4]) * scale); // x
-    self->mag[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6]) * scale); // y
-    self->mag[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8]) * scale); // z
+    self->mag[0] = READ_LE(int16_t, &pkt[4]) * scale; // x
+    self->mag[1] = READ_LE(int16_t, &pkt[6]) * scale; // y
+    self->mag[2] = READ_LE(int16_t, &pkt[8]) * scale; // z
 }
 
 STATIC void bno080_report_grav(bno080_BNO080_obj_t *self, elapsed_t timestamp, const uint8_t *pkt, int len) {
@@ -549,12 +548,11 @@ STATIC void bno080_report_grav(bno080_BNO080_obj_t *self, elapsed_t timestamp, c
     */
 
     uint8_t qp = 8;  /// per section 6.5.10 Q Point = 8
-    // https://en.wikipedia.org/wiki/Q_(number_format)
-    float scale = pow(2.0, -qp);
+    float scale = powf(2.0f, -qp);
 
-    self->grav[0] = mp_obj_new_float(READ_LE(int16_t, &pkt[4]) * scale); // x
-    self->grav[1] = mp_obj_new_float(READ_LE(int16_t, &pkt[6]) * scale); // y
-    self->grav[2] = mp_obj_new_float(READ_LE(int16_t, &pkt[8]) * scale); // z
+    self->grav[0] = READ_LE(int16_t, &pkt[4]) * scale; // x
+    self->grav[1] = READ_LE(int16_t, &pkt[6]) * scale; // y
+    self->grav[2] = READ_LE(int16_t, &pkt[8]) * scale; // z
 }
 
 STATIC void bno080_report(bno080_BNO080_obj_t *self, elapsed_t timestamp, uint8_t accuracy, const uint8_t *buf, int len) {
@@ -755,19 +753,19 @@ STATIC void bno080_isr_recv(void *arg) {
 
 STATIC void bno080_init_data_arrays(bno080_BNO080_obj_t *self) {
     for (int i = 0; i < QUAT_DIMENSION; i++) {
-        self->fquat[i] = mp_obj_new_float(0.0f);
+        self->fquat[i] = 0.0f;
     }
     for (int i = 0; i < ACCEL_DIMENSION; i++) {
-        self->accel[i] = mp_obj_new_float(0.0f);
+        self->accel[i] = 0.0f;
     }
     for (int i = 0; i < GYRO_DIMENSION; i++) {
-        self->gyro[i] = mp_obj_new_float(0.0f);
+        self->gyro[i] = 0.0f;
     }
     for (int i = 0; i < MAG_DIMENSION; i++) {
-        self->mag[i] = mp_obj_new_float(0.0f);
+        self->mag[i] = 0.0f;
     }
     for (int i = 0; i < GRAV_DIMENSION; i++) {
-        self->grav[i] = mp_obj_new_float(0.0f);
+        self->grav[i] = 0.0f;
     }
 }
 
@@ -887,50 +885,44 @@ mp_obj_t common_hal_bno080_BNO080_read(bno080_BNO080_obj_t *self, uint8_t report
         case BNO080_SRID_ARVR_ROTATION_VECTOR:
         case BNO080_SRID_GEOMAGNETIC_ROTATION_VECTOR:
         case BNO080_SRID_GAME_ROTATION_VECTOR:
-        case BNO080_SRID_ROTATION_VECTOR:
-            // Defensive: check for NULLs and re-initialize if needed
+        case BNO080_SRID_ROTATION_VECTOR: {
+            mp_obj_t out[QUAT_DIMENSION];
             for (int i = 0; i < QUAT_DIMENSION; i++) {
-                if (self->fquat[i] == NULL) {
-                    mp_printf(&mp_plat_print, "Warning: fquat[%d] was NULL, reinitializing to 0.0\n", i);
-                    self->fquat[i] = mp_obj_new_float(0.0f);
-                }
+                out[i] = mp_obj_new_float(self->fquat[i]);
             }
-            return mp_obj_new_list(QUAT_DIMENSION, self->fquat);
-        case BNO080_SRID_ACCELEROMETER:
+            return mp_obj_new_list(QUAT_DIMENSION, out);
+        }
+        case BNO080_SRID_ACCELEROMETER: {
+            mp_obj_t out[ACCEL_DIMENSION];
             for (int i = 0; i < ACCEL_DIMENSION; i++) {
-                if (self->accel[i] == NULL) {
-                    mp_printf(&mp_plat_print, "Warning: accel[%d] was NULL, reinitializing to 0.0\n", i);
-                    self->accel[i] = mp_obj_new_float(0.0f);
-                }
+                out[i] = mp_obj_new_float(self->accel[i]);
             }
-            return mp_obj_new_list(ACCEL_DIMENSION, self->accel);
-        case BNO080_SRID_GYROSCOPE:
+            return mp_obj_new_list(ACCEL_DIMENSION, out);
+        }
+        case BNO080_SRID_GYROSCOPE: {
+            mp_obj_t out[GYRO_DIMENSION];
             for (int i = 0; i < GYRO_DIMENSION; i++) {
-                if (self->gyro[i] == NULL) {
-                    mp_printf(&mp_plat_print, "Warning: gyro[%d] was NULL, reinitializing to 0.0\n", i);
-                    self->gyro[i] = mp_obj_new_float(0.0f);
-                }
+                out[i] = mp_obj_new_float(self->gyro[i]);
             }
-            return mp_obj_new_list(GYRO_DIMENSION, self->gyro);
-        case BNO080_SRID_MAGNETIC_FIELD:
+            return mp_obj_new_list(GYRO_DIMENSION, out);
+        }
+        case BNO080_SRID_MAGNETIC_FIELD: {
+            mp_obj_t out[MAG_DIMENSION];
             for (int i = 0; i < MAG_DIMENSION; i++) {
-                if (self->mag[i] == NULL) {
-                    mp_printf(&mp_plat_print, "Warning: mag[%d] was NULL, reinitializing to 0.0\n", i);
-                    self->mag[i] = mp_obj_new_float(0.0f);
-                }
+                out[i] = mp_obj_new_float(self->mag[i]);
             }
-            return mp_obj_new_list(MAG_DIMENSION, self->mag);
-        case BNO080_SRID_GRAVITY:
+            return mp_obj_new_list(MAG_DIMENSION, out);
+        }
+        case BNO080_SRID_GRAVITY: {
+            mp_obj_t out[GRAV_DIMENSION];
             for (int i = 0; i < GRAV_DIMENSION; i++) {
-                if (self->grav[i] == NULL) {
-                    mp_printf(&mp_plat_print, "Warning: grav[%d] was NULL, reinitializing to 0.0\n", i);
-                    self->grav[i] = mp_obj_new_float(0.0f);
-                }
+                out[i] = mp_obj_new_float(self->grav[i]);
             }
-            return mp_obj_new_list(GRAV_DIMENSION, self->grav);
+            return mp_obj_new_list(GRAV_DIMENSION, out);
+        }
     }
 
-    return NULL;
+    return mp_const_none;
 }
 
 void common_hal_bno080_BNO080_deinit(bno080_BNO080_obj_t *self) {
